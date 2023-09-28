@@ -34,8 +34,8 @@ class ControlEstimationSynthesis:
         self.agents = []
         
         self.Mbar = []
-        self.Abar = []
-        self.Bbar = []
+        self.Atilde = []
+        self.Btilde = []
         self.w_covs = []
         self.v_covs = []
         
@@ -45,19 +45,19 @@ class ControlEstimationSynthesis:
             tmp_agent = Agent(tmp_args)   
             self.agents.append(tmp_agent)         
             self.Mbar.append(tmp_agent.Mi)
-            self.Abar.append(tmp_agent.A)
-            self.Bbar.append(tmp_agent.B)
+            self.Atilde.append(tmp_agent.A)
+            self.Btilde.append(tmp_agent.B)
             self.w_covs.append(tmp_agent.w_cov)
             self.v_covs.append(tmp_agent.v_cov)
                
-        self.Abar = block_diagonal_matrix(self.Abar)        
-        self.Bbar = block_diagonal_matrix(self.Bbar)        
+        self.Atilde = block_diagonal_matrix(self.Atilde)        
+        self.Btilde = block_diagonal_matrix(self.Btilde)        
         self.Mbar = block_diagonal_matrix(self.Mbar)
         self.w_covs = block_diagonal_matrix(self.w_covs)
         self.v_covs = block_diagonal_matrix(self.v_covs)
         if enable_debug_mode:
-            display_array_in_window(self.Abar)
-            display_array_in_window(self.Bbar)
+            display_array_in_window(self.Atilde)
+            display_array_in_window(self.Btilde)
             display_array_in_window(self.Mbar)        
             display_array_in_window(self.w_covs)
             display_array_in_window(self.v_covs)
@@ -82,7 +82,7 @@ class ControlEstimationSynthesis:
         if os.path.exists(file_path):
             with open(file_path, 'rb') as file:
                 self.gains = pickle.load(file)
-            print(f"File '{file_path}' loaded.")
+            # print(f"File '{file_path}' loaded.")
             return True
         else:
             return False
@@ -107,7 +107,7 @@ class ControlEstimationSynthesis:
         K_ = None
         for attempt in range(max_attempts):
             try:
-                K_, S_, E_ =ct.dlqr(self.Abar, self.Bbar, self.Q_tilde, self.R_tilde)        
+                K_, S_, E_ =ct.dlqr(self.Atilde, self.Btilde, self.Q_tilde, self.R_tilde)        
                 break  # Exit the loop if successful
             except:            
                 print(f"Attempt {attempt + 1}: Failed to solve DARE")                                
@@ -119,6 +119,22 @@ class ControlEstimationSynthesis:
         return K_
 
  
+    
+    def compute_est_gain(self,F):
+        init_cov = np.ones([self.n*self.N, self.n*self.N])
+        # Calculate Fbar
+        Fbar = np.kron(np.eye(self.N), F)
+
+        # Initialize tmp as an empty array
+        tmp = np.empty((0, self.N * self.p))
+        Bbar = kron(ones(1,N),B_);
+        # Calculate tmp
+        for i in range(self.N):
+            tmp = np.vstack([tmp, np.dot(np.dot(self.Bbar, self.Mbar), Fbar)])
+
+        # Calculate phi
+        phi = np.kron(np.eye(self.N), (self.Abar + np.dot(self.Bbar, F))) - tmp
+        
         
     def set_MAS(self,info):
         self.N = info["N"]

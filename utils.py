@@ -138,11 +138,34 @@ def plot_mas_traj(trajs):
         color = cmap(agent_idx / num_agents)  # Get a unique color based on agent index
         plt.plot(x_positions, y_positions, label=f'Agent {agent_idx+1}', color=color, alpha=0.5,marker='o', markersize=1.5)  # Make lines transparent
 
-   
-
-
     # Add a legend
     plt.legend()
+
+    # Show the plot
+    plt.show()
+    
+def error_plot(error_data):
+
+    num_agents = error_data.shape[0]
+    num_time_steps = error_data.shape[1]
+    # Create a figure with subplots for each agent
+    fig, axs = plt.subplots(num_agents, 1, figsize=(8, 6*num_agents), sharex=True)
+
+    # Plot error data for each agent in its own subplot
+    for agent in range(num_agents):
+        axs[agent].plot(range(num_time_steps), error_data[agent], label=f'Agent {agent+1}')
+        axs[agent].set_ylabel('Error')
+        axs[agent].set_title(f'Agent {agent+1} Error')
+
+    # Add common X-axis label
+    axs[num_agents - 1].set_xlabel('Time Step')
+
+    # Add a legend to distinguish agents
+    for agent in range(num_agents):
+        axs[agent].legend()
+
+    # Adjust spacing between subplots
+    plt.tight_layout()
 
     # Show the plot
     plt.show()

@@ -1,6 +1,6 @@
 import numpy as np
 import math
-
+from utils import *
 class Agent:
     # Constructor method (optional)
     def __init__(self, args):
@@ -8,6 +8,7 @@ class Agent:
         self.id = args['id'] # id of agents
         self.Ts = args['Ts']        
         self.n = args['n'] ## state dim         
+        self.N = args['N']
         self.p = args['p'] ## input dim
         self.A = np.array([
             [1, self.Ts, 0, 0],
@@ -24,8 +25,9 @@ class Agent:
         
         self.x = np.zeros([self.n,1])
         self.xhat = np.zeros([self.n,1])
-        self.x_mem = []
-        self.xhat_mem = []
+        self.xcov = np.eye(self.n*self.N)
+        
+
         # input 
         self.u = np.zeros([self.p,1])
         
@@ -45,6 +47,13 @@ class Agent:
             self.Ci[r_count * self.n:(r_count + 1) * self.n, j * self.n:(j + 1) * self.n] = np.eye(self.n)
             r_count += 1
         
+        self.x_mem = []
+        self.xhat_mem = []        
+        # self.est_gain = np.ones([self.Ci.shape[1], self.Ci.shape[0]])
+        self.est_gain = self.Ci.transpose() 
+            
+        self.Hi = self.Ci ## trying to follow the paper notation
+        
         self.z = np.zeros([self.Ci.shape[0],1])
         self.mi = np.zeros([self.p,self.N*self.p])
         self.mi[:,self.p * self.id:self.p * (self.id+1)] = np.eye(self.p)
@@ -53,7 +62,27 @@ class Agent:
         
         self.F = None # 
 
+    def set_MAS_info(self, Atilde, Btilde,w_covs, v_covs ):
+        self.Atilde = Atilde 
+        self.Btilde = Btilde 
+        self.w_covs = w_covs 
+        self.v_covs = v_covs
     
+    def set_xhat(self,xhat):
+        self.xhat = xhat.copy() 
+        
+    def est_step(self):                        
+        # x = Abar * x + B F xhat 
+        input_tmp = np.dot(self.F, self.xhat)
+        xhat_predict = np.dot(self.Atilde, self.xhat) + np.dot(self.Btilde,input_tmp)
+        updated_xhat = xhat_predict+np.dot(self.est_gain, np.dot(self.Hi, (self.z - xhat_predict)))
+        self.xhat = updated_xhat
+        self.xhat_mem.append(updated_xhat.copy())        
+        return
+    
+    def set_obs_gain(self,est_gain):
+        self.est_gain = est_gain
+        
     def set_gain(self,F):
         self.F = -1*F
         
@@ -97,6 +126,13 @@ class Agent:
         if len(self.x_mem) > 0:
             traj = np.array(self.x_mem)
         return traj.copy()
+
+    def get_est_traj(self):
+        est_traj = None
+        if len(self.xhat_mem) > 0:
+            est_traj = np.array(self.xhat_mem)
+        return est_traj.copy()
+        
    
 # if __name__ == "__main__":
 #     args = {}

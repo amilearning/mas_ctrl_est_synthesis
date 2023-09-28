@@ -38,7 +38,8 @@ class MASsimulation:
         self.X = np.zeros([self.N*self.n,1])
 
         self.run_sim(100)
-        self.eval_ready()
+        self.eval_ready()        
+        
 
     def agent_step(agent, shared_data):
         agent.step( shared_data)
@@ -49,6 +50,7 @@ class MASsimulation:
     def run_sim(self, num_time_steps):
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.N) as executor:
             for time_step in range(num_time_steps):
+
                 ## set measurements 
                 self.get_states()
                 self.get_inputs()
@@ -57,25 +59,45 @@ class MASsimulation:
                 futures = []
                 for agent in self.agents:
                     futures.append(executor.submit(agent.set_measurement(self.X)))
+                    
                 # Wait for all agent step functions to complete
                 concurrent.futures.wait(futures)
+                if time_step ==0 :
+                    for i in range(self.N):
+                        self.agents[i].set_MAS_info(self.synthesis.Atilde,self.synthesis.Btilde, self.synthesis.w_covs, self.synthesis.v_covs)
+                        self.agents[i].set_xhat(self.X)
+                        
                 
+                ########### Estimation  ######################                                                  
                 futures = []
                 for agent in self.agents:
-                    futures.append(executor.submit(agent.step()))                    
+                    futures.append(executor.submit(agent.est_step()))                                                    
+                concurrent.futures.wait(futures)                                                
+                ###########   ######################                                                  
                 
-                # Wait for all agent step functions to complete
-                concurrent.futures.wait(futures)
+                ########### Dynamics prpogate ###########                                          
+                futures = []
+                for agent in self.agents:
+                    futures.append(executor.submit(agent.step()))                                                    
+                concurrent.futures.wait(futures)                                
+                ########### ################## ##########
+                
+   
                 
 
 
         
     def eval_ready(self):
         trajs = []
+        est_trajs = []
         for i in range(self.N):
             tmp_traj = self.agents[i].get_traj()
+            est_traj = self.agents[i].get_est_traj()
             trajs.append(tmp_traj)
+            est_trajs.append(est_traj)
         self.eval.trajs = trajs
+        self.eval.est_trajs = est_trajs
+        
         # self.eval.eval_init()
     
     def get_inputs(self):
@@ -114,12 +136,12 @@ if __name__ == "__main__":
     args['N'] = N_agent
     args['w_std'] = 0.1 # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
-    args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-    # args['c'] = np.array([[1,1,0,0,0],
-    #                       [1,1,1,0,0],
-    #                       [0,1,1,1,0],
-    #                       [0,0,1,1,1],
-    #                       [0,0,0,1,1]])
+    # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
+    args['c'] = np.array([[1,1,0,0,0],
+                          [1,1,1,0,0],
+                          [0,1,1,1,0],
+                          [0,0,1,1,1],
+                          [0,0,0,1,1]])
     args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix     
     args['n'] = 4
     args['p'] = 2
