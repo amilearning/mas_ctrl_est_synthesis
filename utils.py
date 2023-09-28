@@ -1,6 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from enum import Enum
 
+# Define an enumeration class
+class CtrlTypes(Enum):
+    OutpFeedback = 1
+    EstFeedback = 2
+    
+    
+    
 def get_laplacian_mtx(adj_mtx):
     laplacian_mtx = np.zeros(adj_mtx.shape)
     D_mtx = np.diagflat([np.sum(adj_mtx,axis=0)]) 

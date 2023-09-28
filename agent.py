@@ -5,6 +5,7 @@ class Agent:
     # Constructor method (optional)
     def __init__(self, args):
         # Initialize instance variables here
+        self.ctrl_type = CtrlTypes.EstFeedback
         self.id = args['id'] # id of agents
         self.Ts = args['Ts']        
         self.n = args['n'] ## state dim         
@@ -80,11 +81,11 @@ class Agent:
         self.xhat_mem.append(updated_xhat.copy())        
         return
     
-    def set_obs_gain(self,est_gain):
+    def set_est_gain(self,est_gain):
         self.est_gain = est_gain
         
     def set_gain(self,F):
-        self.F = -1*F
+        self.F = F
         
         
     def set_measurement(self,x_all):        
@@ -108,9 +109,11 @@ class Agent:
         
     def step(self, u = None):        
         scale = np.diag(self.w_cov).reshape(1, self.n)
-        disturbances = np.random.normal(loc=0, scale=scale, size=(1, self.n))
-        
-        input = np.dot(np.dot(self.mi,self.F),self.z)
+        disturbances = np.random.normal(loc=0, scale=scale, size=(1, self.n))        
+        if self.ctrl_type == CtrlTypes.OutpFeedback:
+            input = np.dot(np.dot(self.mi,self.F),self.z)
+        elif self.ctrl_type == CtrlTypes.EstFeedback:
+            input = np.dot(np.dot(self.mi,self.F),self.xhat)
         if u is not None:               
             input = u
         

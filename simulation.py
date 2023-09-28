@@ -27,18 +27,19 @@ class MASsimulation:
         self.p = args['p']
         self.Q = args['Q']
         self.R = args['R']
+        sim_step = args['sim_n_step']
         self.synthesis = ControlEstimationSynthesis(args)
         self.eval = MASEval(args)
         self.stage_costs = []
         
         
         self.agents = self.synthesis.agents
-        self.init_MAS()
-        
+        self.init_MAS()        
         self.X = np.zeros([self.N*self.n,1])
-
-        self.run_sim(100)
-        self.eval_ready()        
+        self.run_sim(sim_step)
+        self.eval_ready() 
+        
+        
         
 
     def agent_step(agent, shared_data):
@@ -116,15 +117,12 @@ class MASsimulation:
         self.X = np.vstack(gt_state_vector)        
         
         
-        
-        
-        
     def init_MAS(self):
-        
         for i in range(self.N):
             tmp_state = np.random.randn(4,1)
             self.agents[i].set_x(tmp_state)
             self.agents[i].set_gain(self.synthesis.lqr_gain)
+            self.agents[i].set_est_gain(self.synthesis.est_gains[i])
             
 
                 
@@ -134,8 +132,8 @@ if __name__ == "__main__":
     args['Ts'] = 0.1
     N_agent = 5
     args['N'] = N_agent
-    args['w_std'] = 0.1 # w std for each agent 
-    args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
+    args['w_std'] = 0.2 # w std for each agent 
+    args['v_std'] = np.ones([N_agent,1]) # v std for each agent.     
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
     args['c'] = np.array([[1,1,0,0,0],
                           [1,1,1,0,0],
@@ -147,5 +145,6 @@ if __name__ == "__main__":
     args['p'] = 2
     args['Q'] = np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
     args['R'] = np.eye(N_agent)
+    args['sim_n_step'] = 100
     
     obj = MASsimulation(args)

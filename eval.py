@@ -54,6 +54,7 @@ class MASEval:
         pow_err = err**2
         err_sqrt = np.sqrt(np.sum(pow_err,axis=2))
         error_plot(err_sqrt)
+        print(np.mean(err_sqrt))
         return
             
         

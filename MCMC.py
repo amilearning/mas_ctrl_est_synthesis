@@ -13,8 +13,8 @@ def count_completed_tasks(futures):
     return sum(1 for future in futures if future.done())
 
 if __name__ == "__main__":
-    num_simulations = 1  # Define the number of parallel simulations
-    max_concurrent_processes = 1  # Define the maximum number of concurrent processes
+    num_simulations = 100  # Define the number of parallel simulations
+    max_concurrent_processes = 10  # Define the maximum number of concurrent processes
 
     # Create a list of argument dictionaries for each simulation
     args_list = []
@@ -25,20 +25,22 @@ if __name__ == "__main__":
         args['N'] = N_agent
         args['w_std'] = 0.1 # w std for each agent 
         args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
-        args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-        # args['c'] = np.array([[1,1,0,0,0],
-        #                       [1,1,1,0,0],
-        #                       [0,1,1,1,0],
-        #                       [0,0,1,1,1],
-        #                       [0,0,0,1,1]])
-        args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix     
+        # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
+        args['c'] = np.array([[1,1,0,0,0],
+                              [1,1,1,0,0],
+                              [0,1,1,1,0],
+                              [0,0,1,1,1],
+                              [0,0,0,1,1]])
+        args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
         args['n'] = 4
         args['p'] = 2
         args['Q'] = np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
         args['R'] = np.eye(N_agent)
+        args['sim_n_step'] = 100
         
         args_list.append(args)
-    # Create a list to store the evaluation results for each run
+    obj = MASsimulation(args)
+    # Create a list to store the evaluation results for each run    
     results_list = []
 
     # Create a ThreadPool with a maximum number of threads
@@ -69,3 +71,4 @@ if __name__ == "__main__":
     avg_est_trajs = np.mean(np_est_trajs, axis=0)
     plot_mas_traj(avg_trajs)
     plot_mas_traj(avg_est_trajs)
+    

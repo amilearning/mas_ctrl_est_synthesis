@@ -6,6 +6,9 @@ import control as ct
 import os 
 import pickle
 
+from scipy import linalg as la
+from numpy.linalg import det
+
 enable_debug_mode = False
 
 class ControlEstimationSynthesis:
@@ -38,6 +41,7 @@ class ControlEstimationSynthesis:
         self.Btilde = []
         self.w_covs = []
         self.v_covs = []
+        self.Hi = []
         
         for i in range(self.N):
             tmp_args = args.copy()
@@ -49,9 +53,12 @@ class ControlEstimationSynthesis:
             self.Btilde.append(tmp_agent.B)
             self.w_covs.append(tmp_agent.w_cov)
             self.v_covs.append(tmp_agent.v_cov)
+            self.Hi.append(tmp_agent.Hi)
+            
                
         self.Atilde = block_diagonal_matrix(self.Atilde)        
         self.Btilde = block_diagonal_matrix(self.Btilde)        
+        self.Bbar = np.kron(np.ones([1,self.N]),self.Btilde)
         self.Mbar = block_diagonal_matrix(self.Mbar)
         self.w_covs = block_diagonal_matrix(self.w_covs)
         self.v_covs = block_diagonal_matrix(self.v_covs)
@@ -63,14 +70,28 @@ class ControlEstimationSynthesis:
             display_array_in_window(self.v_covs)
         
                 
-        self.gains = None
-        if self.load_gains():
-            self.lqr_gain = self.gains['lqr_gain']
+        self.data = None
+        data_load = self.load_gains()   
+        if data_load:
+            loaded_w_cov = self.data['w_covs']
+            loaded_v_cov = self.data['v_covs']
+            adj_ = self.data['adj_matrix']
+            if np.allclose(loaded_v_cov, self.v_covs) and np.allclose(loaded_w_cov, self.w_covs) and np.allclose(adj_, self.adj):
+                data_load = True        
+            else:
+                data_load = False
+                
+        if data_load:
+            self.lqr_gain = self.data['lqr_gain']
+            self.est_gains = self.data['est_gains']            
         else:
             self.lqr_gain = self.compute_lpr_gain()
             # enforcing the gain is in the subspace
             self.lqr_gain = (self.lqr_gain * self.F_filter_mtx)
+            self.est_gains = self.compute_est_gain(self.lqr_gain)
             self.save_gains()
+            
+            
     
             
     def load_gains(self,file_name = None):             
@@ -81,7 +102,7 @@ class ControlEstimationSynthesis:
         file_path = os.path.join(data_dir, file_name)
         if os.path.exists(file_path):
             with open(file_path, 'rb') as file:
-                self.gains = pickle.load(file)
+                self.data = pickle.load(file)                
             # print(f"File '{file_path}' loaded.")
             return True
         else:
@@ -93,7 +114,11 @@ class ControlEstimationSynthesis:
         data_dir = os.path.join(script_dir, 'data')  # Create a 'data' directory in the same folder as your script
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
-        data = {'lqr_gain': self.lqr_gain}
+        data = {'lqr_gain': self.lqr_gain,
+                'est_gains': self.est_gains,
+                'w_covs': self.w_covs,
+                'v_covs': self.v_covs,
+                'adj_matrix' : self.adj}
         if file_name is None:
             file_name = 'gains.pkl'
         file_path = os.path.join(data_dir, file_name)
@@ -116,24 +141,69 @@ class ControlEstimationSynthesis:
                     print("Maximum attempts reached. Unable to solve DARE.")
                     
                   
-        return K_
+        return -1*K_
 
- 
+    def compute_phi(self,F):
+        Fbar = np.kron(np.eye(self.N), F)        
+        
+        tmp = np.kron(np.ones([self.N,1]),np.dot(np.dot(self.Bbar, self.Mbar), Fbar))           
+        
+        phi = np.kron(np.eye(self.N), (self.Atilde + np.dot(self.Btilde, F))) - tmp
+        return phi
+    def compute_LC(self,p_cov):
+        S = []
+        L = []
+        # Calculate Kalman gains
+        for i in range(self.N):
+            cov_range = slice(self.N * self.n * i, self.N * self.n * (i + 1))
+            S_i = self.Hi[i] @ (p_cov[cov_range, cov_range] + self.v_covs[cov_range, cov_range]) @ self.Hi[i].T
+            slice_length = cov_range.stop - cov_range.start
+            S_i_inv = la.solve(S_i, np.eye(S_i.shape[0]))
+            L_i = p_cov[cov_range, cov_range] @ self.Hi[i].T @ S_i_inv
+            S.append(S_i.copy())
+            L.append(L_i.copy())
+        LC_size = self.N * L[0].shape[0]
+        # Initialize LC matrix with zeros
+        LC = np.zeros((LC_size, LC_size))
+        # Calculate LC matrix
+        for i in range(self.N):
+            LC_range = slice(i * self.n * self.N, (i + 1) * self.n * self.N)
+            LC[LC_range, LC_range] = L[i] @ self.Hi[i]
+        return LC, L
     
     def compute_est_gain(self,F):
-        init_cov = np.ones([self.n*self.N, self.n*self.N])
-        # Calculate Fbar
-        Fbar = np.kron(np.eye(self.N), F)
+        phi = self.compute_phi(F)        
+        cov = np.eye(self.n*self.N*self.N)  
+        max_iter = 200
+        opt_L = None
+        for i in range(max_iter):              
+            p_cov = np.dot(np.dot(phi,cov),phi.T) + np.kron(np.ones([self.N,self.N]),self.w_covs)
+            LC, L = self.compute_LC(p_cov)
+            # Calculate e_cov_next
+            eye_lc = np.eye(len(LC))
+            jitter = 1e-6
+            e_cov_next = (eye_lc - LC) @ p_cov @ (eye_lc - LC).T + LC @ self.v_covs @ LC.T+ jitter * eye_lc
+            
+            k = cov.shape[0]
+            e_cov_next_inv = la.solve(e_cov_next, np.eye(e_cov_next.shape[0]))
+            tmp = np.dot(e_cov_next_inv, cov)
+            dKL = 0.5 * (np.trace(tmp) - k - np.log(det(tmp)))
+            # print("iter i = " + str(i) + " , dKL = " + str(dKL))
+            opt_L = L
+            if dKL < 0.01:
+                break 
+            cov = e_cov_next.copy()
+            
+        return opt_L
+        
 
-        # Initialize tmp as an empty array
-        tmp = np.empty((0, self.N * self.p))
-        Bbar = kron(ones(1,N),B_);
-        # Calculate tmp
-        for i in range(self.N):
-            tmp = np.vstack([tmp, np.dot(np.dot(self.Bbar, self.Mbar), Fbar)])
 
-        # Calculate phi
-        phi = np.kron(np.eye(self.N), (self.Abar + np.dot(self.Bbar, F))) - tmp
+
+
+
+
+
+
         
         
     def set_MAS(self,info):
