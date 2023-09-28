@@ -28,6 +28,7 @@ class MASsimulation:
         self.Q = args['Q']
         self.R = args['R']
         sim_step = args['sim_n_step']
+        self.offset = get_formation_offset_vector(self.N, self.n, dist = 4.0)
         self.synthesis = ControlEstimationSynthesis(args)
         self.eval = MASEval(args)
         self.stage_costs = []
@@ -41,12 +42,13 @@ class MASsimulation:
         
         
         
+        
 
     def agent_step(agent, shared_data):
         agent.step( shared_data)
         
     def compute_cost(self,x,u):
-        return np.dot(np.dot(np.transpose(x),self.synthesis.Q_tilde),x) + np.dot(np.dot(np.transpose(u),self.synthesis.R_tilde),u)
+        return np.dot(np.dot(np.transpose(x-self.offset),self.synthesis.Q_tilde),x-self.offset) + np.dot(np.dot(np.transpose(u),self.synthesis.R_tilde),u)
         
     def run_sim(self, num_time_steps):
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.N) as executor:
@@ -123,23 +125,24 @@ class MASsimulation:
             self.agents[i].set_x(tmp_state)
             self.agents[i].set_gain(self.synthesis.lqr_gain)
             self.agents[i].set_est_gain(self.synthesis.est_gains[i])
-            
+            self.agents[i].set_offset(self.offset)
 
                 
    
 if __name__ == "__main__":
     args = {}
     args['Ts'] = 0.1
-    N_agent = 5
+    N_agent = 20    
     args['N'] = N_agent
-    args['w_std'] = 0.2 # w std for each agent 
-    args['v_std'] = np.ones([N_agent,1]) # v std for each agent.     
+    args['w_std'] = 0.1 # w std for each agent 
+    args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-    args['c'] = np.array([[1,1,0,0,0],
-                          [1,1,1,0,0],
-                          [0,1,1,1,0],
-                          [0,0,1,1,1],
-                          [0,0,0,1,1]])
+    args['c'] = get_chain_adj_mtx(N_agent) 
+    # args['c'] = np.array([[1,1,0,0,0],
+    #                       [1,1,1,0,0],
+    #                       [0,1,1,1,0],
+    #                       [0,0,1,1,1],
+    #                       [0,0,0,1,1]])
     args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix     
     args['n'] = 4
     args['p'] = 2
@@ -148,3 +151,4 @@ if __name__ == "__main__":
     args['sim_n_step'] = 100
     
     obj = MASsimulation(args)
+    obj.eval.eval_init()

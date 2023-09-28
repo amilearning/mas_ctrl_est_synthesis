@@ -84,7 +84,7 @@ def plot_x_y(traj_list):
     ax2.set_ylabel('Y')
     for traj in traj_list:
         x = traj[:, 0]
-        y = traj[:, 1]
+        y = traj[:, 2]
         time_steps = np.arange(len(traj))  # Assuming time steps are sequential integers            
         ax1.plot(time_steps, x, label='Agent Trajectory', linewidth=1)
         ax2.plot(time_steps, y, label='Agent Trajectory', linewidth=1)
@@ -177,3 +177,40 @@ def error_plot(error_data):
 
     # Show the plot
     plt.show()
+    
+def get_formation_offset_vector(N,n,dist = 4.0):    
+
+    rel_pos = np.zeros((N, 2))
+
+    for i in range(N):
+        theta = 2 * np.pi / (N + 1) * (i + 1)
+        rel_pos[i, :] = [dist * np.cos(theta), dist * np.sin(theta)]
+
+    xref_tmp = np.zeros((N, N, 2))
+    xref = np.zeros((n * N, N))
+    offset_mtx = np.zeros((n * N, 1))
+
+    for i in range(N):
+        for j in range(N):
+            xref_tmp[i, j, :] = rel_pos[i, :] - rel_pos[j, :]
+            xref[j * n:j * n + n, i] = [xref_tmp[i, j, 0], 0, xref_tmp[i, j, 1], 0]
+
+    xref = -1 * xref
+
+    # Create offset matrix
+    for id in range(N):
+        offset_mtx[id * n:id * n + n, 0] = [rel_pos[id, 0], 0, rel_pos[id, 1], 0]
+
+    return offset_mtx
+
+def get_chain_adj_mtx(N):
+    adjacency_matrix = np.zeros((N, N), dtype=int)
+    # Specify the connections for the chain network
+    for i in range(N - 1):
+        adjacency_matrix[i, i + 1] = 1        
+        adjacency_matrix[i + 1, i] = 1  # Uncomment if you want bidirectional connections
+        
+    for i in range(N):
+        adjacency_matrix[i,i] = 1
+    # np.diag(adjacency_matrix) = 1
+    return adjacency_matrix

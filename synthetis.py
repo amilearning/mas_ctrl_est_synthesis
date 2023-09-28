@@ -29,7 +29,7 @@ class ControlEstimationSynthesis:
         self.p = args['p']
         self.Q = args['Q']
         self.R = args['R']
-        self.adj = args['c']
+        self.adj = args['c']        
         self.F_filter_mtx = np.kron(self.adj,np.ones([self.p,self.n]))
 
         self.Q_tilde = np.kron(self.Q,np.eye(self.n))        
@@ -46,7 +46,7 @@ class ControlEstimationSynthesis:
         for i in range(self.N):
             tmp_args = args.copy()
             tmp_args['id'] = i
-            tmp_agent = Agent(tmp_args)   
+            tmp_agent = Agent(tmp_args)               
             self.agents.append(tmp_agent)         
             self.Mbar.append(tmp_agent.Mi)
             self.Atilde.append(tmp_agent.A)
@@ -76,10 +76,10 @@ class ControlEstimationSynthesis:
             loaded_w_cov = self.data['w_covs']
             loaded_v_cov = self.data['v_covs']
             adj_ = self.data['adj_matrix']
-            if np.allclose(loaded_v_cov, self.v_covs) and np.allclose(loaded_w_cov, self.w_covs) and np.allclose(adj_, self.adj):
-                data_load = True        
+            if self.data['args'] == self.args and np.allclose(loaded_v_cov, self.v_covs) and np.allclose(loaded_w_cov, self.w_covs) and np.allclose(adj_, self.adj):                data_load = True        
             else:
                 data_load = False
+            
                 
         if data_load:
             self.lqr_gain = self.data['lqr_gain']
@@ -118,7 +118,8 @@ class ControlEstimationSynthesis:
                 'est_gains': self.est_gains,
                 'w_covs': self.w_covs,
                 'v_covs': self.v_covs,
-                'adj_matrix' : self.adj}
+                'adj_matrix' : self.adj,
+                'args':self.args}
         if file_name is None:
             file_name = 'gains.pkl'
         file_path = os.path.join(data_dir, file_name)

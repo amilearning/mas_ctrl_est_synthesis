@@ -25,12 +25,12 @@ if __name__ == "__main__":
         args['N'] = N_agent
         args['w_std'] = 0.1 # w std for each agent 
         args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
-        # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-        args['c'] = np.array([[1,1,0,0,0],
-                              [1,1,1,0,0],
-                              [0,1,1,1,0],
-                              [0,0,1,1,1],
-                              [0,0,0,1,1]])
+        args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
+        # args['c'] = np.array([[1,1,0,0,0],
+        #                       [1,1,1,0,0],
+        #                       [0,1,1,1,0],
+        #                       [0,0,1,1,1],
+        #                       [0,0,0,1,1]])
         args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
         args['n'] = 4
         args['p'] = 2

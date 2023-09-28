@@ -5,7 +5,8 @@ class Agent:
     # Constructor method (optional)
     def __init__(self, args):
         # Initialize instance variables here
-        self.ctrl_type = CtrlTypes.EstFeedback
+        self.ctrl_type = CtrlTypes.OutpFeedback
+        # self.ctrl_type = CtrlTypes.EstFeedback
         self.id = args['id'] # id of agents
         self.Ts = args['Ts']        
         self.n = args['n'] ## state dim         
@@ -62,7 +63,11 @@ class Agent:
         self.Mi[self.p * self.id:self.p * (self.id+1), self.p * self.id:self.p * (self.id+1)] = np.eye(self.p)
         
         self.F = None # 
+        self.offset = np.zeros([self.Ci.shape[0],1])
 
+    def set_offset(self,offset):
+        self.offset =offset.copy()
+        
     def set_MAS_info(self, Atilde, Btilde,w_covs, v_covs ):
         self.Atilde = Atilde 
         self.Btilde = Btilde 
@@ -111,9 +116,9 @@ class Agent:
         scale = np.diag(self.w_cov).reshape(1, self.n)
         disturbances = np.random.normal(loc=0, scale=scale, size=(1, self.n))        
         if self.ctrl_type == CtrlTypes.OutpFeedback:
-            input = np.dot(np.dot(self.mi,self.F),self.z)
+            input = np.dot(np.dot(self.mi,self.F),self.z-self.offset)
         elif self.ctrl_type == CtrlTypes.EstFeedback:
-            input = np.dot(np.dot(self.mi,self.F),self.xhat)
+            input = np.dot(np.dot(self.mi,self.F),self.xhat-self.offset)
         if u is not None:               
             input = u
         
