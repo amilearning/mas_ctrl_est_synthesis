@@ -1,0 +1,129 @@
+import numpy as np
+import math
+from agent import Agent
+from utils import *
+import control as ct
+from synthetis import ControlEstimationSynthesis
+import threading
+import concurrent.futures
+from eval import MASEval
+enable_debug_mode = False
+
+
+    
+    
+class MASsimulation:
+    # Constructor method (optional)
+    def __init__(self, args):
+        # Initialize instance variables here
+        self.args = args
+        self.Ts = args['Ts']
+        self.N = args['N']
+        self.w_std = args['w_std']
+        self.v_std = args['v_std']
+        self.L = args['L']
+        self.N = args['N']
+        self.n = args['n']
+        self.p = args['p']
+        self.Q = args['Q']
+        self.R = args['R']
+        self.synthesis = ControlEstimationSynthesis(args)
+        self.eval = MASEval(args)
+        self.stage_costs = []
+        
+        
+        self.agents = self.synthesis.agents
+        self.init_MAS()
+        
+        self.X = np.zeros([self.N*self.n,1])
+
+        self.run_sim(100)
+        self.eval_ready()
+
+    def agent_step(agent, shared_data):
+        agent.step( shared_data)
+        
+    def compute_cost(self,x,u):
+        return np.dot(np.dot(np.transpose(x),self.synthesis.Q_tilde),x) + np.dot(np.dot(np.transpose(u),self.synthesis.R_tilde),u)
+        
+    def run_sim(self, num_time_steps):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.N) as executor:
+            for time_step in range(num_time_steps):
+                ## set measurements 
+                self.get_states()
+                self.get_inputs()
+                stage_cost = self.compute_cost(self.X, self.U)                
+                self.eval.add_stage_cost(stage_cost)
+                futures = []
+                for agent in self.agents:
+                    futures.append(executor.submit(agent.set_measurement(self.X)))
+                # Wait for all agent step functions to complete
+                concurrent.futures.wait(futures)
+                
+                futures = []
+                for agent in self.agents:
+                    futures.append(executor.submit(agent.step()))                    
+                
+                # Wait for all agent step functions to complete
+                concurrent.futures.wait(futures)
+                
+
+
+        
+    def eval_ready(self):
+        trajs = []
+        for i in range(self.N):
+            tmp_traj = self.agents[i].get_traj()
+            trajs.append(tmp_traj)
+        self.eval.trajs = trajs
+        # self.eval.eval_init()
+    
+    def get_inputs(self):
+        input_vector = []
+        for i in range(self.N):
+            input_tmp = self.agents[i].get_input()
+            input_vector.append(input_tmp)
+        self.U = np.vstack(input_vector)  
+              
+        
+    def get_states(self):
+        gt_state_vector = []
+        for i in range(self.N):
+            gt_state = self.agents[i].get_x()
+            gt_state_vector.append(gt_state)
+        self.X = np.vstack(gt_state_vector)        
+        
+        
+        
+        
+        
+    def init_MAS(self):
+        
+        for i in range(self.N):
+            tmp_state = np.random.randn(4,1)
+            self.agents[i].set_x(tmp_state)
+            self.agents[i].set_gain(self.synthesis.lqr_gain)
+            
+
+                
+   
+if __name__ == "__main__":
+    args = {}
+    args['Ts'] = 0.1
+    N_agent = 5
+    args['N'] = N_agent
+    args['w_std'] = 0.1 # w std for each agent 
+    args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
+    args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
+    # args['c'] = np.array([[1,1,0,0,0],
+    #                       [1,1,1,0,0],
+    #                       [0,1,1,1,0],
+    #                       [0,0,1,1,1],
+    #                       [0,0,0,1,1]])
+    args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix     
+    args['n'] = 4
+    args['p'] = 2
+    args['Q'] = np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
+    args['R'] = np.eye(N_agent)
+    
+    obj = MASsimulation(args)

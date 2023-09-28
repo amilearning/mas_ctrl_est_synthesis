@@ -1,0 +1,148 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+def get_laplacian_mtx(adj_mtx):
+    laplacian_mtx = np.zeros(adj_mtx.shape)
+    D_mtx = np.diagflat([np.sum(adj_mtx,axis=0)]) 
+    laplacian_mtx =D_mtx - adj_mtx    
+    return laplacian_mtx
+    
+
+def block_diagonal_matrix(matrix_list):
+    """
+    Create a block diagonal matrix from a list of matrices with potentially different dimensions.
+
+    Args:
+    matrix_list (list of 2D arrays): List of matrices to form the block diagonal matrix.
+
+    Returns:
+    numpy.ndarray: Block diagonal matrix.
+    """
+    # Determine the dimensions of the block diagonal matrix
+    num_matrices = len(matrix_list)
+    row_sizes = [matrix.shape[0] for matrix in matrix_list]
+    col_sizes = [matrix.shape[1] for matrix in matrix_list]
+
+    # Initialize the block diagonal matrix with zeros
+    block_diag_size = (sum(row_sizes), sum(col_sizes))
+    block_diag_matrix = np.zeros(block_diag_size)
+
+    # Fill the diagonal blocks with the matrices from matrix_list
+    row_idx = 0
+    col_idx = 0
+    for i in range(num_matrices):
+        row_size = row_sizes[i]
+        col_size = col_sizes[i]
+
+        block_diag_matrix[row_idx:row_idx + row_size, col_idx:col_idx + col_size] = matrix_list[i]
+
+        row_idx += row_size
+        col_idx += col_size
+
+    return block_diag_matrix
+
+def display_array_in_window(data, cmap='viridis'):
+    """
+    Display a NumPy array in a separate window using Matplotlib.
+
+    Args:
+    data (numpy.ndarray): The array to display.
+    cmap (str): The colormap to use for visualization (default: 'viridis').
+
+    Returns:
+    None
+    """
+    fig, ax = plt.subplots()
+    im = ax.imshow(data, cmap=cmap)
+    plt.colorbar(im)
+    ax.grid(True, linestyle='--', linewidth=0.5, color='gray')
+
+
+    def close_window(event):
+        if event.key or event.button:
+            plt.close()
+
+    fig.canvas.mpl_connect('key_press_event', close_window)
+    fig.canvas.mpl_connect('button_press_event', close_window)
+
+    plt.show()
+    
+    
+def plot_x_y(traj_list):        
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+    ax1.set_ylabel('X')
+    ax1.set_title('Trajectories in X and Y Dimensions')        
+    ax2.set_xlabel('Time Step')
+    ax2.set_ylabel('Y')
+    for traj in traj_list:
+        x = traj[:, 0]
+        y = traj[:, 1]
+        time_steps = np.arange(len(traj))  # Assuming time steps are sequential integers            
+        ax1.plot(time_steps, x, label='Agent Trajectory', linewidth=1)
+        ax2.plot(time_steps, y, label='Agent Trajectory', linewidth=1)
+    ax1.legend()
+    ax2.legend()
+    plt.tight_layout()
+    plt.show()
+
+def plot_3dtraj(traj_list):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for traj in traj_list:
+        x = traj[:, 0]
+        y = traj[:, 1]
+        z = np.ones([len(traj),1])  # Use z=1 for all points, assuming 2D trajectories
+        ax.plot(x, y, z, label='Trajectory', linewidth=1, marker='o', markersize=1.5, markeredgecolor='blue', markeredgewidth=1, markerfacecolor='blue')
+    # Add labels and title
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_title('3D Trajectory Plot')        
+    ax.legend()
+    plt.show()
+    
+def plot_stage_cost(stage_costs):  
+    stage_costs = np.array(stage_costs).squeeze()
+    stage_costs = stage_costs[50:]
+    time_steps = np.arange(len(stage_costs))    
+    
+    plt.plot(time_steps, stage_costs, marker='o', linestyle='-', markersize=5, label='Stage Costs')    
+    plt.xlabel('Time Step')
+    plt.ylabel('Stage Cost')
+    plt.title('Stage Costs Over Time')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+    
+    
+def plot_mas_traj(trajs):
+    num_agents, num_time_steps, state_dim = trajs.shape
+
+    # Create a figure
+    plt.figure(figsize=(8, 6))
+
+    # Label the axes
+    plt.xlabel('X Position')
+    plt.ylabel('Y Position')
+    plt.title('Agent Trajectories')
+
+    # Create a colormap with a unique color for each agent
+    cmap = plt.get_cmap('tab10')
+
+    # Extract and plot the x and y positions for each agent with a different color
+    for agent_idx in range(num_agents):
+        x_positions = trajs[agent_idx, :, 0]  # Assuming x position is in the first state dimension (0)
+        y_positions = trajs[agent_idx, :, 2]  # Assuming y position is in the third state dimension (2)
+
+        # color = cmap(agent_idx / num_agents)  # Get a unique color based on agent index
+        # plt.plot(x_positions, y_positions, label=f'Agent {agent_idx+1}', color=color)
+        color = cmap(agent_idx / num_agents)  # Get a unique color based on agent index
+        plt.plot(x_positions, y_positions, label=f'Agent {agent_idx+1}', color=color, alpha=0.5,marker='o', markersize=1.5)  # Make lines transparent
+
+   
+
+
+    # Add a legend
+    plt.legend()
+
+    # Show the plot
+    plt.show()
