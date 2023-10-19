@@ -9,6 +9,7 @@ import pickle
 from scipy import linalg as la
 from numpy.linalg import det
 
+
 enable_debug_mode = False
 
 class ControlEstimationSynthesis:
@@ -37,6 +38,10 @@ class ControlEstimationSynthesis:
         self.agents = []
         
         self.Mbar = []
+
+        self.Mibar = [] ## set of filter matrix for inputs from the entire MAS \in R^{Np x Np}
+        self.ci = [] ## set of filter matrix for states from the entire MAS \in R^{nN x nN }
+    
         self.Atilde = []
         self.Btilde = []
         self.w_covs = []
@@ -48,7 +53,9 @@ class ControlEstimationSynthesis:
             tmp_args['id'] = i
             tmp_agent = Agent(tmp_args)               
             self.agents.append(tmp_agent)         
-            self.Mbar.append(tmp_agent.Mi)
+            self.Mibar.append(tmp_agent.Mibar)
+            self.ci.append(tmp_agent.ci)
+            self.Mbar.append(tmp_agent.Mibar)            
             self.Atilde.append(tmp_agent.A)
             self.Btilde.append(tmp_agent.B)
             self.w_covs.append(tmp_agent.w_cov)
@@ -72,28 +79,35 @@ class ControlEstimationSynthesis:
                 
         self.data = None
         data_load = self.load_gains()   
+        ############### hard FAlse
+        ############### hard FAlse
+        data_load = False
+        ############### hard FAlse
+        ############### hard FAlse
+
         if data_load:
             loaded_w_cov = self.data['w_covs']
             loaded_v_cov = self.data['v_covs']
             adj_ = self.data['adj_matrix']
-            if self.data['args'] == self.args and np.allclose(loaded_v_cov, self.v_covs) and np.allclose(loaded_w_cov, self.w_covs) and np.allclose(adj_, self.adj):                data_load = True        
-            else:
-                data_load = False
+            # if self.data['args'] == self.args and np.allclose(loaded_v_cov, self.v_covs) and np.allclose(loaded_w_cov, self.w_covs) and np.allclose(adj_, self.adj):                
+            #     data_load = True        
+            # else:
+            #     data_load = False
             
                 
         if data_load:
             self.lqr_gain = self.data['lqr_gain']
-            self.est_gains = self.data['est_gains']            
+            self.est_gains = self.data['est_gains']  
+            self.opt_gain = self.data['opt_gain']          
         else:
-            self.lqr_gain = self.compute_lpr_gain()
-            # enforcing the gain is in the subspace
-            self.lqr_gain = (self.lqr_gain * self.F_filter_mtx)
-            self.est_gains = self.compute_est_gain(self.lqr_gain)
+            self.lqr_gain = self.compute_lpr_gain()            
+            self.opt_gain = self.ctrl_est_synthesis(init_gain_guess = self.lqr_gain)
+            
             self.save_gains()
             
             
     
-            
+    
     def load_gains(self,file_name = None):             
         script_dir = os.path.dirname(os.path.abspath(__file__))
         data_dir = os.path.join(script_dir, 'data')  # Create a 'data' directory in the same folder as your script
@@ -115,6 +129,7 @@ class ControlEstimationSynthesis:
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
         data = {'lqr_gain': self.lqr_gain,
+                'opt_gain': self.opt_gain,
                 'est_gains': self.est_gains,
                 'w_covs': self.w_covs,
                 'v_covs': self.v_covs,
@@ -127,7 +142,91 @@ class ControlEstimationSynthesis:
             pickle.dump(data, file)
             print(f"File '{file_path}' Saved.")
 
+    def riccati_update(self,P,Q,R,F):
+        a_bf = self.Atilde+np.dot(self.Btilde,F)        
+        return Q+np.dot(F.T,np.dot(R,F)) + np.dot(a_bf.T,np.dot(P,a_bf))         
         
+    def lqr_F_update(self,P):
+        tmp = self.R_tilde + np.dot(np.dot(self.Btilde.T, P), self.Btilde)
+        tmp_inv = la.solve(tmp, np.eye(tmp.shape[0]))
+        sol = -1*np.dot(np.dot(np.dot(tmp_inv,self.Btilde.T),P),self.Atilde)
+        return sol
+    
+    def prev_max_F_update(self,P):
+        # solve via symvester equatoin
+        #   AXB + CXD = E
+        #  = -B^T P A Sig 
+        # MRM F Sigij + 
+        # R F Sigij +
+        # B^TPB F Sigij 
+        Atmp = []
+        Btmp = []
+        # F = matrixEquationSolver(A,B,C)
+        for i in range(self.N):
+            for j in range(self.N):
+                Atmp_ = np.dot(np.dot(self.Mibar[i].T,(self.R_tilde + np.dot(np.dot(self.Btilde.T,P), self.Btilde))),self.Mibar[j])
+                Atmp.append(Atmp_)
+                # Btmp_ = np.eye(self.sigmas(i,j).shape[0])
+                Btmp_ = self.sigmas(i,j)
+                Btmp.append(Btmp_.T)
+
+        for i in range(self.N):
+            for j in range(self.N):
+                Atmp_ = np.dot(np.dot(self.Mibar[i].T,(self.R_tilde + np.dot(np.dot(self.Btilde.T,P), self.Btilde))),self.Mibar[j])
+                Atmp.append(Atmp_)
+                Btmp_ = np.eye(self.sigmas(i,j).shape[0])
+                Btmp.append(Btmp_.T)
+        
+        tmp = np.dot(np.dot(np.dot(self.Btilde.T, P),self.Atilde),self.sigmas(0,0))
+        rrmtx = np.zeros(tmp.shape)
+        for i in range(self.N):
+            for j in range(self.N):                
+                rrmtx +=  np.dot(np.dot(np.dot(self.Btilde.T, P),self.Atilde),self.sigmas(i,j))
+        rrmtx = -1*np.dot(np.dot(self.Btilde.T, P),self.Atilde)    
+        updated_F = matrixEquationSolver(Atmp,Btmp,rrmtx)
+        return updated_F
+
+
+    def ctrl_synthesis(self):
+        roll_P = np.eye(self.Q_tilde.shape[0]) # self.Q_tilde
+        roll_F = np.zeros(self.lqr_gain.shape)
+        max_iter = 100
+        for out_ier in range(max_iter):
+            # roll_F =self.lqr_F_update(roll_P) ## original LQR derivative
+            roll_F = self.prev_max_F_update(roll_P)
+            next_P = self.riccati_update(roll_P,self.Q_tilde,self.R_tilde,roll_F)            
+            opt_F = roll_F.copy()
+            opt_P = next_P.copy()
+            f_norm = np.linalg.norm((next_P-roll_P), 'fro')
+            print("f_norm = " + str(f_norm))
+            if f_norm < 1e-2:
+                opt_F =self.lqr_F_update(next_P.copy()) ## original LQR derivative
+                break 
+            else:
+                roll_P = next_P.copy()
+        return opt_F
+
+    def ctrl_est_synthesis(self,init_gain_guess = None):
+        
+        max_iter = 100
+        roll_F = init_gain_guess.copy()
+        for out_iter in range(max_iter):
+            self.est_gains, self.est_covs = self.compute_est_gain(roll_F)
+            self.sigmas = lambda i, j: self.est_covs[i * self.n*self.N: (i + 1) * self.n*self.N, j * self.n*self.N: (j + 1) * self.n*self.N]
+            opt_F = self.ctrl_synthesis()
+            out_f_norm = np.linalg.norm((opt_F-roll_F), 'fro')
+            print("out iter f_norm = " + str(out_f_norm))
+            if out_f_norm < 1e-1:
+                break
+            else:
+                roll_F = opt_F.copy()
+        
+        self.est_gains, self.est_covs = self.compute_est_gain(opt_F)
+        self.sigmas = lambda i, j: self.est_covs[i * self.n*self.N: (i + 1) * self.n*self.N, j * self.n*self.N: (j + 1) * self.n*self.N]
+            
+        return opt_F
+    
+
     def compute_lpr_gain(self):        
         max_attempts = 100  # Maximum number of attempts
         K_ = None
@@ -141,8 +240,10 @@ class ControlEstimationSynthesis:
                 if attempt == max_attempts - 1:
                     print("Maximum attempts reached. Unable to solve DARE.")
                     
-                  
-        return -1*K_
+        K = -1*K_
+        # enforcing the gain is in the subspace
+        # K = (K* self.F_filter_mtx)
+        return K
 
     def compute_phi(self,F):
         Fbar = np.kron(np.eye(self.N), F)        
@@ -195,7 +296,7 @@ class ControlEstimationSynthesis:
                 break 
             cov = e_cov_next.copy()
             
-        return opt_L
+        return opt_L, cov
         
 
 
@@ -211,6 +312,7 @@ class ControlEstimationSynthesis:
         self.N = info["N"]
         self.v_stds = info["v_stds"]
         
+   
    
 # if __name__ == "__main__":
 #     args = {}

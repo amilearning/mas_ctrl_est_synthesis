@@ -7,7 +7,36 @@ class CtrlTypes(Enum):
     OutpFeedback = 1
     EstFeedback = 2
     
-    
+
+
+def matrixEquationSolver(A, B, F):
+    if not isinstance(A, list) or not isinstance(B, list):
+        raise ValueError("Defining matrices are not in a list.")
+
+    if len(A) != len(B):
+        raise ValueError("Ambiguous number of terms in the matrix equation.")
+
+    nA, mA = A[0].shape
+    nB, mB = B[0].shape
+
+    if nA != mA or nB != mB:
+        raise ValueError("Rectangular matrices are not allowed.")
+
+    maxSize = 5000  # Do not form matrices above this size
+
+    if nA * nB > maxSize:
+        raise MemoryError("A very large matrix will be formed.")
+
+    C = np.zeros((nA * nB, nA * nB), dtype=A[0].dtype)
+    for j in range(len(A)):
+        C += np.kron(B[j], A[j])
+
+    x = np.linalg.solve(C, F.T.ravel())
+    C_inv = np.linalg.solve(C, np.eye(C.shape[0]))
+    # xx = np.dot(C_inv,F.ravel()).reshape(nA,nB)
+    X = x.reshape(nB, nA).T
+
+    return X
     
 def get_laplacian_mtx(adj_mtx):
     laplacian_mtx = np.zeros(adj_mtx.shape)

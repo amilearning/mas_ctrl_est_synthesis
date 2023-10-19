@@ -37,9 +37,9 @@ class Agent:
         self.N = args['N'] 
                 
         self.w_std = args['w_std']# disturbance std
-        self.w_cov = np.diagflat(np.kron(np.ones([self.n, 1]), self.w_std**2))        
+        self.w_cov = np.diagflat(np.kron( self.w_std**2,np.ones([self.n, 1])))        
         self.v_std = args['v_std']# disturbance std
-        self.v_cov = np.diagflat(np.kron(np.ones([self.n, 1]), self.v_std**2))        
+        self.v_cov = np.diagflat(np.kron( self.v_std**2,np.ones([self.n, 1])))        
         self.L = args['L'] # laplacian matrix
         self.c = args['c'] # adgency matrix
         
@@ -57,10 +57,13 @@ class Agent:
         self.Hi = self.Ci ## trying to follow the paper notation
         
         self.z = np.zeros([self.Ci.shape[0],1])
-        self.mi = np.zeros([self.p,self.N*self.p])
-        self.mi[:,self.p * self.id:self.p * (self.id+1)] = np.eye(self.p)
-        self.Mi = np.zeros([self.N*self.p,self.N*self.p])
-        self.Mi[self.p * self.id:self.p * (self.id+1), self.p * self.id:self.p * (self.id+1)] = np.eye(self.p)
+        
+        self.ci = np.zeros([self.n*self.N,self.n*self.N]) 
+        self.ci[self.n * self.id:self.n * (self.id+1), self.n * self.id:self.n * (self.id+1)] = np.eye(self.n)
+        self.Mi = np.zeros([self.p,self.N*self.p])
+        self.Mi[:,self.p * self.id:self.p * (self.id+1)] = np.eye(self.p)
+        self.Mibar = np.zeros([self.N*self.p,self.N*self.p])
+        self.Mibar[self.p * self.id:self.p * (self.id+1), self.p * self.id:self.p * (self.id+1)] = np.eye(self.p)
         
         self.F = None # 
         self.offset = np.zeros([self.Ci.shape[0],1])
@@ -116,9 +119,9 @@ class Agent:
         scale = np.diag(self.w_cov).reshape(1, self.n)
         disturbances = np.random.normal(loc=0, scale=scale, size=(1, self.n))        
         if self.ctrl_type == CtrlTypes.OutpFeedback:
-            input = np.dot(np.dot(self.mi,self.F),self.z-self.offset)
+            input = np.dot(np.dot(self.Mi,self.F),self.z-self.offset)
         elif self.ctrl_type == CtrlTypes.EstFeedback:
-            input = np.dot(np.dot(self.mi,self.F),self.xhat-self.offset)
+            input = np.dot(np.dot(self.Mi,self.F),self.xhat-self.offset)
         if u is not None:               
             input = u
         

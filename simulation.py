@@ -123,7 +123,7 @@ class MASsimulation:
         for i in range(self.N):
             tmp_state = np.random.randn(4,1)
             self.agents[i].set_x(tmp_state)
-            self.agents[i].set_gain(self.synthesis.lqr_gain)
+            self.agents[i].set_gain(self.synthesis.opt_gain)
             self.agents[i].set_est_gain(self.synthesis.est_gains[i])
             self.agents[i].set_offset(self.offset)
 
@@ -132,10 +132,11 @@ class MASsimulation:
 if __name__ == "__main__":
     args = {}
     args['Ts'] = 0.1
-    N_agent = 20    
+    N_agent = 5    
     args['N'] = N_agent
     args['w_std'] = 0.1 # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
+    args['v_std'][0] = 1
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
     args['c'] = get_chain_adj_mtx(N_agent) 
     # args['c'] = np.array([[1,1,0,0,0],
