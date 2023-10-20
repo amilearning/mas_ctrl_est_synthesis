@@ -5,7 +5,7 @@ class Agent:
     # Constructor method (optional)
     def __init__(self, args):
         # Initialize instance variables here
-        self.ctrl_type = CtrlTypes.OutpFeedback
+        self.ctrl_type = args['ctrl_type']
         # self.ctrl_type = CtrlTypes.EstFeedback
         self.id = args['id'] # id of agents
         self.Ts = args['Ts']        
@@ -118,10 +118,11 @@ class Agent:
     def step(self, u = None):        
         scale = np.diag(self.w_cov).reshape(1, self.n)
         disturbances = np.random.normal(loc=0, scale=scale, size=(1, self.n))        
-        if self.ctrl_type == CtrlTypes.OutpFeedback:
-            input = np.dot(np.dot(self.Mi,self.F),self.z-self.offset)
-        elif self.ctrl_type == CtrlTypes.EstFeedback:
+        
+        if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
             input = np.dot(np.dot(self.Mi,self.F),self.xhat-self.offset)
+        else:
+            input = np.dot(np.dot(self.Mi,self.F),self.z-self.offset)
         if u is not None:               
             input = u
         

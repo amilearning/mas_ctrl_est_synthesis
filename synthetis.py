@@ -8,7 +8,7 @@ import pickle
 
 from scipy import linalg as la
 from numpy.linalg import det
-
+from scipy.signal import cont2discrete
 
 enable_debug_mode = False
 
@@ -81,7 +81,7 @@ class ControlEstimationSynthesis:
         data_load = self.load_gains()   
         ############### hard FAlse
         ############### hard FAlse
-        data_load = False
+        # data_load = False
         ############### hard FAlse
         ############### hard FAlse
 
@@ -99,11 +99,14 @@ class ControlEstimationSynthesis:
             self.lqr_gain = self.data['lqr_gain']
             self.est_gains = self.data['est_gains']  
             self.opt_gain = self.data['opt_gain']          
-        else:
-            self.lqr_gain = self.compute_lpr_gain()            
+            self.sub_gain = self.data['sub_gain']
+        else:           
+            self.lqr_gain = self.compute_lpr_gain()       
+            self.sub_gain = self.compute_suboptimal_gain()     
             self.opt_gain = self.ctrl_est_synthesis(init_gain_guess = self.lqr_gain)
             
             self.save_gains()
+        print("synthesis ready")
             
             
     
@@ -131,6 +134,7 @@ class ControlEstimationSynthesis:
         data = {'lqr_gain': self.lqr_gain,
                 'opt_gain': self.opt_gain,
                 'est_gains': self.est_gains,
+                'sub_gain': self.sub_gain,
                 'w_covs': self.w_covs,
                 'v_covs': self.v_covs,
                 'adj_matrix' : self.adj,
@@ -142,6 +146,46 @@ class ControlEstimationSynthesis:
             pickle.dump(data, file)
             print(f"File '{file_path}' Saved.")
 
+    def compute_suboptimal_gain(self):                
+        ## assume the dynamics are the same for all agents
+        ## assume the Q and R is identity matrix 
+        Leigs = np.sort(np.linalg.eigvals(self.L))
+        end_eig = Leigs[-1]
+        second_eig = Leigs[1]
+        c = 2/(second_eig+end_eig)
+        Ac = np.array([[0, 1, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 1],
+                    [0, 0, 0, 0]])
+
+        Bc = np.array([[0, 0],
+                    [1, 0],
+                    [0, 0],
+                    [0, 1]])
+        Q = np.eye(self.n)
+        R = self.R[0:2,0:2]
+        epsilon = 0.001
+        # solve  A.T P + PA + P * (c^2 * end_eig**2 - 2*c*end_eig) BR^-1 B.T P + end_eig Q + epsilon I_qn = 0
+        
+        # Qbar = end_eig Q + epsilon I_qn  
+        Qbar = end_eig * Q + epsilon*np.eye(Q.shape[0])
+        # Rbar = -1 *(c^2 * end_eig**2 - 2*c*end_eig) * R^-1
+        Rbar = -1* (c**2 * end_eig**2 - 2* c * end_eig)* np.linalg.inv(R)
+        P = la.solve_continuous_are(Ac,Bc,Qbar,Rbar)        
+        K = -c * np.linalg.inv(R) @  Bc.T @ P
+        
+        A_tilde_c = Ac + Bc @ K
+        sys = cont2discrete((A_tilde_c, np.zeros([4,1]), [],[]), self.Ts, method='zoh')
+        A_tilde_d = sys[0]
+        original_sys = cont2discrete((Ac, Bc, [],[]), self.Ts, method='zoh')
+        Ad = original_sys[0]
+        Bd = original_sys[1]
+        Kd = np.dot(np.linalg.pinv(Bd), A_tilde_d - Ad)
+        gain_d = np.kron(self.L, Kd)
+
+        return gain_d
+    
+    
     def riccati_update(self,P,Q,R,F):
         a_bf = self.Atilde+np.dot(self.Btilde,F)        
         return Q+np.dot(F.T,np.dot(R,F)) + np.dot(a_bf.T,np.dot(P,a_bf))         
@@ -228,6 +272,7 @@ class ControlEstimationSynthesis:
                
         tmp = np.dot(np.dot(np.dot(self.Btilde.T, P),self.Atilde),self.sigmas(0,0))
         rrmtx = np.zeros(tmp.shape)
+        # for rrmtx, the sign is inverse as we need to move it to the right side of the equation 
         for i in range(self.N):
             for j in range(self.N):  
                 # B^T cj^T P ci A Sigij     
@@ -242,45 +287,34 @@ class ControlEstimationSynthesis:
         return updated_F
 
 
-    def ctrl_synthesis(self):
+    def ctrl_est_synthesis(self,init_gain_guess):
         roll_P = np.eye(self.Q_tilde.shape[0]) # self.Q_tilde
-        roll_F = np.zeros(self.lqr_gain.shape)
+        roll_F = init_gain_guess
         max_iter = 100
         for out_ier in range(max_iter):
             # roll_F =self.lqr_F_update(roll_P) ## original LQR derivative
             # roll_F = self.prev_max_F_update(roll_P)
-            roll_F = self.apprx_F_update(roll_P)            
+            self.est_gains, self.est_covs = self.compute_est_gain(roll_F)
+            self.sigmas = lambda i, j: self.est_covs[i * self.n*self.N: (i + 1) * self.n*self.N, j * self.n*self.N: (j + 1) * self.n*self.N]
+                    
+            roll_F = self.apprx_F_update(roll_P)    
+            
             next_P = self.riccati_update(roll_P,self.Q_tilde,self.R_tilde,roll_F)            
             opt_F = roll_F.copy()
             opt_P = next_P.copy()
             f_norm = np.linalg.norm((next_P-roll_P), 'fro')
             print("f_norm = " + str(f_norm))
-            if f_norm < 1e-2:
-                opt_F =self.lqr_F_update(next_P.copy()) ## original LQR derivative
+            if f_norm < 5e-2:                
                 break 
             else:
                 roll_P = next_P.copy()
-        return opt_F
-
-    def ctrl_est_synthesis(self,init_gain_guess = None):
-        
-        max_iter = 100
-        roll_F = init_gain_guess.copy()
-        for out_iter in range(max_iter):
-            self.est_gains, self.est_covs = self.compute_est_gain(roll_F)
-            self.sigmas = lambda i, j: self.est_covs[i * self.n*self.N: (i + 1) * self.n*self.N, j * self.n*self.N: (j + 1) * self.n*self.N]
-            opt_F = self.ctrl_synthesis()
-            out_f_norm = np.linalg.norm((opt_F-roll_F), 'fro')
-            print("out iter f_norm = " + str(out_f_norm))
-            if out_f_norm < 1e-1:
-                break
-            else:
-                roll_F = opt_F.copy()
         
         self.est_gains, self.est_covs = self.compute_est_gain(opt_F)
         self.sigmas = lambda i, j: self.est_covs[i * self.n*self.N: (i + 1) * self.n*self.N, j * self.n*self.N: (j + 1) * self.n*self.N]
-            
+              
         return opt_F
+
+    
     
 
     def compute_lpr_gain(self):        
@@ -339,7 +373,7 @@ class ControlEstimationSynthesis:
             LC, L = self.compute_LC(p_cov)
             # Calculate e_cov_next
             eye_lc = np.eye(len(LC))
-            jitter = 1e-6
+            jitter = 1e-4
             e_cov_next = (eye_lc - LC) @ p_cov @ (eye_lc - LC).T + LC @ self.v_covs @ LC.T+ jitter * eye_lc
             
             k = cov.shape[0]

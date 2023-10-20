@@ -28,8 +28,11 @@ class MASsimulation:
         self.Q = args['Q']
         self.R = args['R']
         sim_step = args['sim_n_step']
-        self.offset = get_formation_offset_vector(self.N, self.n, dist = 4.0)
+        self.ctrl_type = args['ctrl_type']
+        
+        self.offset = get_formation_offset_vector(self.N, self.n, dist = 0.0)
         self.synthesis = ControlEstimationSynthesis(args)
+     
         self.eval = MASEval(args)
         self.stage_costs = []
         
@@ -70,13 +73,13 @@ class MASsimulation:
                         self.agents[i].set_MAS_info(self.synthesis.Atilde,self.synthesis.Btilde, self.synthesis.w_covs, self.synthesis.v_covs)
                         self.agents[i].set_xhat(self.X)
                         
-                
-                ########### Estimation  ######################                                                  
-                futures = []
-                for agent in self.agents:
-                    futures.append(executor.submit(agent.est_step()))                                                    
-                concurrent.futures.wait(futures)                                                
-                ###########   ######################                                                  
+                if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+                    ########### Estimation  ######################                                                  
+                    futures = []
+                    for agent in self.agents:
+                        futures.append(executor.submit(agent.est_step()))                                                    
+                    concurrent.futures.wait(futures)                                                
+                    ###########   ######################                                                  
                 
                 ########### Dynamics prpogate ###########                                          
                 futures = []
@@ -95,11 +98,14 @@ class MASsimulation:
         est_trajs = []
         for i in range(self.N):
             tmp_traj = self.agents[i].get_traj()
-            est_traj = self.agents[i].get_est_traj()
+            if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+                est_traj = self.agents[i].get_est_traj()    
+                est_trajs.append(est_traj)
             trajs.append(tmp_traj)
-            est_trajs.append(est_traj)
+            
         self.eval.trajs = trajs
-        self.eval.est_trajs = est_trajs
+        if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+            self.eval.est_trajs = est_trajs
         
         # self.eval.eval_init()
     
@@ -120,11 +126,21 @@ class MASsimulation:
         
         
     def init_MAS(self):
+
+        if self.ctrl_type == CtrlTypes.LQROutputFeedback:
+            gain = self.synthesis.lqr_gain
+        elif self.ctrl_type == CtrlTypes.SubOutpFeedback:
+            gain = self.synthesis.sub_gain
+        elif self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+            gain = self.synthesis.opt_gain
+
+
         for i in range(self.N):
             tmp_state = np.random.randn(4,1)
             self.agents[i].set_x(tmp_state)
-            self.agents[i].set_gain(self.synthesis.opt_gain)
-            self.agents[i].set_est_gain(self.synthesis.est_gains[i])
+            self.agents[i].set_gain(gain)
+            if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+                self.agents[i].set_est_gain(self.synthesis.est_gains[i])
             self.agents[i].set_offset(self.offset)
 
                 
@@ -132,7 +148,7 @@ class MASsimulation:
 if __name__ == "__main__":
     args = {}
     args['Ts'] = 0.1
-    N_agent = 5    
+    N_agent = 5
     args['N'] = N_agent
     args['w_std'] = 0.1 # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
@@ -148,8 +164,15 @@ if __name__ == "__main__":
     args['n'] = 4
     args['p'] = 2
     args['Q'] = np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
+    # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
-    args['sim_n_step'] = 100
+    args['sim_n_step'] = 200
+
+    # LQROutputFeedback = 0
+    # SubOutpFeedback = 1 
+    # CtrlEstFeedback = 2
     
+    args['ctrl_type'] = CtrlTypes.SubOutpFeedback
+
     obj = MASsimulation(args)
     obj.eval.eval_init()

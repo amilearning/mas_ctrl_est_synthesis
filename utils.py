@@ -4,8 +4,9 @@ from enum import Enum
 
 # Define an enumeration class
 class CtrlTypes(Enum):
-    OutpFeedback = 1
-    EstFeedback = 2
+    LQROutputFeedback = 0
+    SubOutpFeedback = 1 
+    CtrlEstFeedback = 2
     
 
 
@@ -137,6 +138,26 @@ def plot_3dtraj(traj_list):
     ax.legend()
     plt.show()
     
+def plot_comparison_result(lqr_result, sub_result, opt_result):
+    costs = []
+    costs.append(np.mean(lqr_result['stage_cost'], axis=0))
+    costs.append(np.mean(sub_result['stage_cost'], axis=0))
+    costs.append(np.mean(opt_result['stage_cost'], axis=0))
+
+    plt.plot(costs[0].squeeze(), label='lqr')
+    plt.plot(costs[1].squeeze(), label='suboptimal')
+    plt.plot(costs[2].squeeze(), label='ctrlest')
+
+    # Set plot labels and title
+    plt.xlabel('Time Step')
+    plt.ylabel('Stage Cost')
+    plt.title('Stage Costs Over Time Horizon')
+
+    # Add a legend
+    plt.legend()
+    plt.show()
+    print("done")
+
 def plot_stage_cost(stage_costs):  
     stage_costs = np.array(stage_costs).squeeze()
     stage_costs = stage_costs[50:]
