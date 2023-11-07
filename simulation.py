@@ -149,9 +149,9 @@ if __name__ == "__main__":
     args['Ts'] = 0.1
     N_agent = 5
     args['N'] = N_agent
-    args['w_std'] = 0.1 # w std for each agent 
-    args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
-    args['v_std'][0] = 0.2
+    args['w_std'] = 1e-1 # w std for each agent 
+    args['v_std'] = np.ones([N_agent,1])*1e-1 # v std for each agent.     
+    args['v_std'][0] = 5e-1
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
     args['c'] = get_chain_adj_mtx(N_agent) 
     # args['c'] = np.array([[1,1,0,0,0],
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     #                        [0,0,0,0]])
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
-    args['sim_n_step'] = 100
+    args['sim_n_step'] = 1000
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 

@@ -18,7 +18,7 @@ class MASEval:
         
     def eval_init(self):
         plot_x_y(self.trajs)
-        self.get_error_plot()
+        # self.get_error_plot()
         plot_stage_cost(self.stage_costs)
         
     def get_results(self):

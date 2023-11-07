@@ -233,6 +233,7 @@ class ControlEstimationSynthesis:
         
         roll_P = np.eye(self.Q_tilde.shape[0]) # self.Q_tilde
         roll_F = init_gain_guess
+        prev_F = roll_F.copy()
         max_iter = 100
         for out_ier in range(max_iter):
             # roll_F =self.lqr_F_update(roll_P) ## original LQR derivative
@@ -240,18 +241,25 @@ class ControlEstimationSynthesis:
             self.est_gains, self.est_covs = self.compute_est_gain(roll_F)
             self.sigmas = lambda i, j: self.est_covs[i * self.n*self.N: (i + 1) * self.n*self.N, j * self.n*self.N: (j + 1) * self.n*self.N]
             sigmaBarx = self.compute_sigmaBarx(roll_F, self.est_covs)
-            roll_F = self.F_derivative_update(roll_P, sigmaBarx)            
-            # roll_F =self.lqr_F_update(roll_P) ## original LQR derivative
-            
-            next_P = self.riccati_update(roll_P,self.Q_tilde,self.R_tilde,roll_F)            
-            opt_F = roll_F.copy()
-            opt_P = next_P.copy()
-            f_norm = np.linalg.norm((next_P-roll_P), 'fro')
-            print("f_norm = " + str(f_norm))
-            if f_norm < 5e-2:                
+            for in_ier in range(max_iter):                            
+                # roll_F =self.lqr_F_update(roll_P) ## original LQR derivative  
+                roll_F = self.F_derivative_update(roll_P, sigmaBarx)           
+                next_P = self.riccati_update(roll_P,self.Q_tilde,self.R_tilde,roll_F)            
+                opt_F = roll_F.copy()
+                opt_P = next_P.copy()
+                p_norm_diff = np.linalg.norm((next_P-roll_P), 'fro')
+                # print("p_norm_diff = " + str(p_norm_diff))
+                if p_norm_diff < 1e-2:                
+                    break 
+                else:
+                    roll_P = next_P.copy()
+            f_norm_diff = np.linalg.norm((opt_F-prev_F), 'fro')
+            print("f_norm_diff = " + str(f_norm_diff))
+            if f_norm_diff < 1e-2:                
                 break 
             else:
-                roll_P = next_P.copy()
+                prev_F = opt_F.copy()
+
         
         self.est_gains, self.est_covs = self.compute_est_gain(opt_F)
         self.sigmas = lambda i, j: self.est_covs[i * self.n*self.N: (i + 1) * self.n*self.N, j * self.n*self.N: (j + 1) * self.n*self.N]
@@ -339,7 +347,7 @@ class ControlEstimationSynthesis:
 
     def compute_sigmaBarx(self,F,cov):
         steady_cov = cov.copy()
-        roll_cov = np.eye(self.n*self.N)*1e-3
+        roll_cov = np.eye(self.n*self.N)*1e-4
         max_iter = 200
         Fbar = np.kron(np.eye(self.N), F)                        
         abf = self.Atilde + self.Btilde@ F        
