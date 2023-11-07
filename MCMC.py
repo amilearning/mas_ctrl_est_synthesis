@@ -38,7 +38,7 @@ if __name__ == "__main__":
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
     # CtrlEstFeedback = 2
-        args['ctrl_type'] = CtrlTypes.SubOutpFeedback
+        args['ctrl_type'] = CtrlTypes.CtrlEstFeedback
         
         args_list.append(args)
     obj = MASsimulation(args)

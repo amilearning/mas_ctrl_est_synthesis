@@ -33,7 +33,7 @@ class ControlEstimationSynthesis:
         self.adj = args['c']        
         self.F_filter_mtx = np.kron(self.adj,np.ones([self.p,self.n]))
 
-        self.Q_tilde = np.kron(self.Q,np.eye(self.n))        
+        self.Q_tilde = np.kron(self.Q,np.eye(self.n))      #  np.kron(self.L, self.Q)   #
         self.R_tilde = np.kron(self.R, np.eye(self.p))             
         self.agents = []
         
@@ -106,7 +106,10 @@ class ControlEstimationSynthesis:
             self.opt_gain = self.ctrl_est_synthesis(init_gain_guess = self.lqr_gain)
             
             self.save_gains()
-        print("synthesis ready")
+        
+        if data_load is False:
+            print("gains generated")
+        
             
             
     
@@ -164,7 +167,7 @@ class ControlEstimationSynthesis:
                     [0, 1]])
         Q = np.eye(self.n)
         R = self.R[0:2,0:2]
-        epsilon = 0.001
+        epsilon = 0.0001
         # solve  A.T P + PA + P * (c^2 * end_eig**2 - 2*c*end_eig) BR^-1 B.T P + end_eig Q + epsilon I_qn = 0
         
         # Qbar = end_eig Q + epsilon I_qn  
@@ -196,108 +199,49 @@ class ControlEstimationSynthesis:
         sol = -1*np.dot(np.dot(np.dot(tmp_inv,self.Btilde.T),P),self.Atilde)
         return sol
     
-    def prev_max_F_update(self,P):
+    def F_derivative_update(self,P,SigBarx):
         # solve via symvester equatoin
         #   AXB + CXD = E
-        #  = -B^T P A Sig 
-        # MRM F Sigij + 
-        # R F Sigij +
-        # B^TPB F Sigij 
+        #  = -B^T P A SigBarx 
+        # M(R+B^TPB)M F Sigij + 
+        # R F SigBarx +
+        # B^TPB F SigBarx 
         Atmp = []
         Btmp = []
         # F = matrixEquationSolver(A,B,C)
         for i in range(self.N):
             for j in range(self.N):
-                Atmp_ = np.dot(np.dot(self.Mibar[i].T,(self.R_tilde + np.dot(np.dot(self.Btilde.T,P), self.Btilde))),self.Mibar[j])
-                Atmp.append(Atmp_)
+                Atmp_ = self.Mibar[i].T @ (self.R_tilde + self.Btilde.T @ P @  self.Btilde) @ self.Mibar[j]
+                Atmp.append(Atmp_.copy())
                 # Btmp_ = np.eye(self.sigmas(i,j).shape[0])
                 Btmp_ = self.sigmas(i,j)
-                Btmp.append(Btmp_.T)
+                Btmp.append(Btmp_.copy())
 
-        for i in range(self.N):
-            for j in range(self.N):
-                Atmp_ = np.dot(np.dot(self.Mibar[i].T,(self.R_tilde + np.dot(np.dot(self.Btilde.T,P), self.Btilde))),self.Mibar[j])
-                Atmp.append(Atmp_)
-                Btmp_ = np.eye(self.sigmas(i,j).shape[0])
-                Btmp.append(Btmp_.T)
+    
+        Atmp_ = (self.R_tilde + self.Btilde.T @ P @  self.Btilde)
+        Atmp.append(Atmp_.copy())
+        Btmp_ = SigBarx
+        Btmp.append(Btmp_.copy())
         
-        tmp = np.dot(np.dot(np.dot(self.Btilde.T, P),self.Atilde),self.sigmas(0,0))
-        rrmtx = np.zeros(tmp.shape)
-        for i in range(self.N):
-            for j in range(self.N):                
-                rrmtx +=  np.dot(np.dot(np.dot(self.Btilde.T, P),self.Atilde),self.sigmas(i,j))
-        rrmtx = -1*np.dot(np.dot(self.Btilde.T, P),self.Atilde)    
+        rrmtx = -1 * self.Btilde.T @ P @ self.Atilde @ SigBarx     
         updated_F = matrixEquationSolver(Atmp,Btmp,rrmtx)
         return updated_F
 
 
-    def apprx_F_update(self,P):
-        Atmps = []
-        Btmps = []
-        for i in range(self.N):
-            for j in range(self.N):
-                # Mj^T R Mi (F) Sigij 
-                Atmp = self.Mibar[j].T @ self.R_tilde @ self.Mibar[i] 
-                Btmp = self.sigmas(i,j).T
-                Atmps.append(Atmp.copy())
-                Btmps.append(Btmp.copy())
-                # B^T cj^T P c^i B (F) Sigij
-                Atmp = self.Btilde.T @ self.ci[j].T @ P @ self.ci[i] @ self.Btilde
-                Btmp = self.sigmas(i,j).T
-                Atmps.append(Atmp.copy())
-                Btmps.append(Btmp.copy())
-                # B^T Hi^T Li^T ci^T P cj Lj Hj B (F) Sigij
-                Atmp = self.Btilde.T @ self.Hi[i].T @ self.est_gains[i].T @ self.ci[i].T @ P @ self.ci[j] @ self.est_gains[j] @ self.Hi[j] @ self.Btilde
-                Btmp = self.sigmas(i,j).T
-                Atmps.append(Atmp.copy())
-                Btmps.append(Btmp.copy())
-                for l in range(self.N):
-                    # (-) Ml^T B^T Hi^T Li^T ci^T P cj Lj Hj B (F) Siglj
-                    Atmp = -1* self.Mibar[l].T @ self.Btilde.T @ self.Hi[i].T @ self.est_gains[i].T @ self.ci[i].T @ P @ self.ci[j] @ self.est_gains[j] @ self.Hi[j] @ self.Btilde
-                    Btmp = self.sigmas(l,j).T
-                    Atmps.append(Atmp.copy())
-                    Btmps.append(Btmp.copy())
-                    # (-) B^T Hi^T Li^T ci^T P cj Lj Hj B Ml (F) Sigil
-                    Atmp = -1* self.Btilde.T @ self.Hi[i].T @ self.est_gains[i].T @ self.ci[i].T @ P @ self.ci[j] @ self.est_gains[j] @ self.Hi[j] @ self.Btilde @ self.Mibar[l]
-                    Btmp = self.sigmas(l,j).T
-                    Atmps.append(Atmp.copy())
-                    Btmps.append(Btmp.copy())
-                    for p in range(self.N):
-                        # Ml^T B^T Hi^T Li^T ci^T P cj Lj Hj B Mp (F) Siglp
-                        Atmp = self.Mibar[l].T @ self.Btilde.T @ self.Hi[i].T @ self.est_gains[i].T @ self.ci[i].T @ P @ self.ci[j] @ self.est_gains[j] @ self.Hi[j] @ self.Btilde @ self.Mibar[p]
-                        Btmp = self.sigmas(l,p).T
-                        Atmps.append(Atmp.copy())
-                        Btmps.append(Btmp.copy())
-                        
-               
-        tmp = np.dot(np.dot(np.dot(self.Btilde.T, P),self.Atilde),self.sigmas(0,0))
-        rrmtx = np.zeros(tmp.shape)
-        # for rrmtx, the sign is inverse as we need to move it to the right side of the equation 
-        for i in range(self.N):
-            for j in range(self.N):  
-                # B^T cj^T P ci A Sigij     
-                rrmtx -=  self.Btilde.T @ self.ci[j].T @ P @ self.ci[i] @ self.Atilde @ self.sigmas(i,j) 
-                # B^T Hi^T Li^T ci^T P cj Lj Hj A Sigij
-                rrmtx -= self.Btilde.T @ self.Hi[i].T @ self.est_gains[i].T @ self.ci[i].T @ P @ self.ci[j] @ self.est_gains[j] @ self.Hi[j] @ self.Atilde @ self.sigmas(i,j)
-                for l in range(self.N):
-                    # (-) Ml^T B^T Hi^T Li^T ci^T P cj Lj Hj A Siglj 
-                    rrmtx +=  self.Mibar[l].T @ self.Btilde.T @ self.Hi[i].T @ self.est_gains[i].T @ self.ci[i].T @ P @ self.ci[j] @ self.est_gains[j] @ self.Hi[j] @ self.Atilde @ self.sigmas(l,j)
-        
-        updated_F = matrixEquationSolver(Atmps,Btmps,rrmtx)
-        return updated_F
-
 
     def ctrl_est_synthesis(self,init_gain_guess):
+        
         roll_P = np.eye(self.Q_tilde.shape[0]) # self.Q_tilde
         roll_F = init_gain_guess
         max_iter = 100
         for out_ier in range(max_iter):
             # roll_F =self.lqr_F_update(roll_P) ## original LQR derivative
-            # roll_F = self.prev_max_F_update(roll_P)
+            
             self.est_gains, self.est_covs = self.compute_est_gain(roll_F)
             self.sigmas = lambda i, j: self.est_covs[i * self.n*self.N: (i + 1) * self.n*self.N, j * self.n*self.N: (j + 1) * self.n*self.N]
-                    
-            roll_F = self.apprx_F_update(roll_P)    
+            sigmaBarx = self.compute_sigmaBarx(roll_F, self.est_covs)
+            roll_F = self.F_derivative_update(roll_P, sigmaBarx)            
+            # roll_F =self.lqr_F_update(roll_P) ## original LQR derivative
             
             next_P = self.riccati_update(roll_P,self.Q_tilde,self.R_tilde,roll_F)            
             opt_F = roll_F.copy()
@@ -349,8 +293,9 @@ class ControlEstimationSynthesis:
         for i in range(self.N):
             cov_range = slice(self.N * self.n * i, self.N * self.n * (i + 1))
             S_i = self.Hi[i] @ (p_cov[cov_range, cov_range] + self.v_covs[cov_range, cov_range]) @ self.Hi[i].T
-            slice_length = cov_range.stop - cov_range.start
-            S_i_inv = la.solve(S_i, np.eye(S_i.shape[0]))
+            jitter = 1e-2
+            S_i_jitter = S_i + np.eye(len(S_i))*jitter
+            S_i_inv = la.solve(S_i_jitter, np.eye(S_i_jitter.shape[0]))
             L_i = p_cov[cov_range, cov_range] @ self.Hi[i].T @ S_i_inv
             S.append(S_i.copy())
             L.append(L_i.copy())
@@ -373,22 +318,53 @@ class ControlEstimationSynthesis:
             LC, L = self.compute_LC(p_cov)
             # Calculate e_cov_next
             eye_lc = np.eye(len(LC))
-            jitter = 1e-4
+            jitter = 1e-5
             e_cov_next = (eye_lc - LC) @ p_cov @ (eye_lc - LC).T + LC @ self.v_covs @ LC.T+ jitter * eye_lc
-            
-            k = cov.shape[0]
-            e_cov_next_inv = la.solve(e_cov_next, np.eye(e_cov_next.shape[0]))
-            tmp = np.dot(e_cov_next_inv, cov)
-            dKL = 0.5 * (np.trace(tmp) - k - np.log(det(tmp)))
+            cov_diff = np.linalg.norm((e_cov_next-cov), 'fro')
+            # k = cov.shape[0]
+            # e_cov_next_inv = la.solve(e_cov_next, np.eye(e_cov_next.shape[0]))
+            # tmp = np.dot(e_cov_next_inv, cov)
+            # cov_diff = 0.5 * (np.trace(tmp) - k - np.log(det(tmp)))            
             # print("iter i = " + str(i) + " , dKL = " + str(dKL))
-            opt_L = L
-            if dKL < 0.01:
-                break 
+            opt_L = L.copy()            
             cov = e_cov_next.copy()
+            if cov_diff < 1e-3:                
+                break 
+
+            
             
         return opt_L, cov
         
 
+
+    def compute_sigmaBarx(self,F,cov):
+        steady_cov = cov.copy()
+        roll_cov = np.eye(self.n*self.N)*1e-3
+        max_iter = 200
+        Fbar = np.kron(np.eye(self.N), F)                        
+        abf = self.Atilde + self.Btilde@ F        
+        fftilde = self.Btilde @ np.hstack(self.Mibar) @ Fbar
+        
+        for i in range(max_iter):                          
+           
+            eye_jitter = np.eye(len(self.w_covs))
+            jitter = 1e-5
+            next_cov = abf @ roll_cov @ abf.T + fftilde @ steady_cov @ fftilde.T +self.w_covs  + eye_jitter*jitter   
+            # next_cov = abf @ roll_cov @ abf.T +self.w_covs
+            cov_diff = np.linalg.norm((next_cov-roll_cov), 'fro')
+            
+            # k = next_cov.shape[0]
+            # e_cov_next_inv = la.solve(next_cov, np.eye(next_cov.shape[0]))
+            # tmp = np.dot(e_cov_next_inv, roll_cov)
+            # cov_diff = 0.5 * (np.trace(tmp) - k - np.log(det(tmp)))
+            # print("roll_cov_iter i = " + str(i) + " , dKL = " + str(dKL))            
+            
+            roll_cov = next_cov.copy()
+            if cov_diff < 1e-3:
+                break 
+            
+        return roll_cov
+        
 
 
 

@@ -116,8 +116,9 @@ def plot_x_y(traj_list):
         x = traj[:, 0]
         y = traj[:, 2]
         time_steps = np.arange(len(traj))  # Assuming time steps are sequential integers            
-        ax1.plot(time_steps, x, label='Agent Trajectory', linewidth=1)
-        ax2.plot(time_steps, y, label='Agent Trajectory', linewidth=1)
+        # ax1.plot(time_steps, x, label='Agent Trajectory', linewidth=1)
+        # ax2.plot(time_steps, y, label='Agent Trajectory', linewidth=1)
+        ax1.plot(x, y, label='Agent Trajectory')
     ax1.legend()
     ax2.legend()
     plt.tight_layout()

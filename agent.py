@@ -82,10 +82,11 @@ class Agent:
         
     def est_step(self):                        
         # x = Abar * x + B F xhat 
-        input_tmp = np.dot(self.F, self.xhat)
-        xhat_predict = np.dot(self.Atilde, self.xhat) + np.dot(self.Btilde,input_tmp)
-        updated_xhat = xhat_predict+np.dot(self.est_gain, np.dot(self.Hi, (self.z - xhat_predict)))
-        self.xhat = updated_xhat
+        input_tmp = np.dot(self.F, (self.xhat-self.offset)).copy()
+        xhat_predict = (np.dot(self.Atilde, self.xhat) + np.dot(self.Btilde,input_tmp)).copy()
+        # updated_xhat = xhat_predict+np.dot(self.est_gain, np.dot(self.Hi, (self.z - xhat_predict)))
+        updated_xhat = xhat_predict+self.est_gain@ self.Hi@ (self.z - xhat_predict)
+        self.xhat = updated_xhat.copy()
         self.xhat_mem.append(updated_xhat.copy())        
         return
     
@@ -120,13 +121,13 @@ class Agent:
         disturbances = np.random.normal(loc=0, scale=scale, size=(1, self.n))        
         
         if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
-            input = np.dot(np.dot(self.Mi,self.F),self.xhat-self.offset)
+            input = np.dot(np.dot(self.Mi,self.F),self.xhat-self.offset).copy()
         else:
             input = np.dot(np.dot(self.Mi,self.F),self.z-self.offset)
         if u is not None:               
             input = u
         
-        self.u = input
+        self.u = input.copy()
         new_x = np.dot(self.A,self.x) + np.dot(self.B, self.u)+ disturbances.reshape(self.n,1)
         self.x = new_x.copy()
         self.x_mem.append(self.x.copy())

@@ -14,27 +14,13 @@ def count_completed_tasks(futures):
     return sum(1 for future in futures if future.done())
 
 def mcmc_simulatoin(args, ctrl_type : CtrlTypes):
-    num_simulations = 20  # Define the number of parallel simulations
+    num_simulations = 100  # Define the number of parallel simulations
     max_concurrent_processes = 10  # Define the maximum number of concurrent processes
 
     # Create a list of argument dictionaries for each simulation
     args_list = []
     for _ in range(num_simulations):
-        # N_agent = 5
-        # args = {}        
-        # args['Ts'] = 0.1       
-        # args['N'] = N_agent
-        # args['w_std'] = 0.1 # w std for each agent 
-        # args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
-        # args['v_std'][0] = 1        
-        # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-        # args['c'] = get_chain_adj_mtx(N_agent) 
-        # args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
-        # args['n'] = 4
-        # args['p'] = 2
-        # args['Q'] = args['L'] # np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
-        # args['R'] = np.eye(N_agent)
-        # args['sim_n_step'] = 200
+        
        
         args['ctrl_type'] = ctrl_type
         
@@ -68,29 +54,41 @@ def mcmc_simulatoin(args, ctrl_type : CtrlTypes):
     
     est_trajs = [result['est_trajs'] for result in results_list]
     np_est_trajs = np.stack(est_trajs).squeeze()
+   
     avg_est_trajs = np.mean(np_est_trajs, axis=0)
     
     result = {'stage_cost' : np_stage_costs, 
               'avg_trajs' : avg_trajs}
     return result
- 
     
+
+# for agent in range(avg_est_trajs.shape[0]):
+#     plt.plot(range(avg_est_trajs.shape[1]), avg_est_trajs[agent,:,3], label=f'Agent {agent + 1}')
+# plt.plot(avg_trajs[0,:,3], linestyle='--')
+# # Set plot labels and title
+
+# # Add a legend
+# plt.legend()
+
+# # Show the plot
+# plt.show()
 
 if __name__ == "__main__":
     N_agent = 5
     args = {}        
     args['Ts'] = 0.1       
     args['N'] = N_agent
-    args['w_std'] = 0.1 # w std for each agent 
-    args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
-    args['v_std'][0] = 1        
-    args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
+    args['w_std'] = 0.001  # w std for each agent 
+    args['v_std'] = np.ones([N_agent,1])*0.1# v std for each agent.     
+    # args['v_std'][0] = 1        
+    # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
     args['c'] = get_chain_adj_mtx(N_agent) 
     args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
     args['n'] = 4
     args['p'] = 2
     args['Q'] = np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
-    args['R'] = np.eye(N_agent)
+    
+    args['R'] = np.eye(N_agent)*1e-2
     args['sim_n_step'] = 100
     args['ctrl_type'] = 0
     synthesis = ControlEstimationSynthesis(args)

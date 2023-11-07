@@ -30,7 +30,7 @@ class MASsimulation:
         sim_step = args['sim_n_step']
         self.ctrl_type = args['ctrl_type']
         
-        self.offset = get_formation_offset_vector(self.N, self.n, dist = 0.0)
+        self.offset = get_formation_offset_vector(self.N, self.n, dist = 0.5)
         self.synthesis = ControlEstimationSynthesis(args)
      
         self.eval = MASEval(args)
@@ -64,9 +64,9 @@ class MASsimulation:
                 self.eval.add_stage_cost(stage_cost)
                 futures = []
                 for agent in self.agents:
-                    futures.append(executor.submit(agent.set_measurement(self.X)))
-                    
+                    futures.append(executor.submit(agent.set_measurement(self.X)))                    
                 # Wait for all agent step functions to complete
+                
                 concurrent.futures.wait(futures)
                 if time_step ==0 :
                     for i in range(self.N):
@@ -122,7 +122,7 @@ class MASsimulation:
         for i in range(self.N):
             gt_state = self.agents[i].get_x()
             gt_state_vector.append(gt_state)
-        self.X = np.vstack(gt_state_vector)        
+        self.X = np.vstack(gt_state_vector).copy()        
         
         
     def init_MAS(self):
@@ -134,9 +134,8 @@ class MASsimulation:
         elif self.ctrl_type == CtrlTypes.CtrlEstFeedback:
             gain = self.synthesis.opt_gain
 
-
+        tmp_state = np.random.randn(4,1)*1e-3
         for i in range(self.N):
-            tmp_state = np.random.randn(4,1)
             self.agents[i].set_x(tmp_state)
             self.agents[i].set_gain(gain)
             if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
@@ -152,7 +151,7 @@ if __name__ == "__main__":
     args['N'] = N_agent
     args['w_std'] = 0.1 # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
-    args['v_std'][0] = 1
+    args['v_std'][0] = 0.2
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
     args['c'] = get_chain_adj_mtx(N_agent) 
     # args['c'] = np.array([[1,1,0,0,0],
@@ -163,16 +162,20 @@ if __name__ == "__main__":
     args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix     
     args['n'] = 4
     args['p'] = 2
-    args['Q'] = np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
+    args['Q'] =  np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
+    # np.array([[1,0,0,0],
+    #                        [0,0,0,0],
+    #                        [0,0,1,0],
+    #                        [0,0,0,0]])
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
-    args['sim_n_step'] = 200
+    args['sim_n_step'] = 100
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
     # CtrlEstFeedback = 2
     
-    args['ctrl_type'] = CtrlTypes.SubOutpFeedback
+    args['ctrl_type'] = CtrlTypes.CtrlEstFeedback
 
     obj = MASsimulation(args)
     obj.eval.eval_init()

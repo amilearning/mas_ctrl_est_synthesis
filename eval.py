@@ -18,6 +18,7 @@ class MASEval:
         
     def eval_init(self):
         plot_x_y(self.trajs)
+        self.get_error_plot()
         plot_stage_cost(self.stage_costs)
         
     def get_results(self):
@@ -51,8 +52,9 @@ class MASEval:
         
         gt_state = np.repeat(gt_state[np.newaxis, :], self.est_trajs.shape[0], axis=0)
         err = gt_state - self.est_trajs
-        pow_err = err**2
+        pow_err = err
         err_sqrt = np.sqrt(np.sum(pow_err,axis=2))
+        err_sqrt = pow_err[:,:,0]
         error_plot(err_sqrt)
         print(np.mean(err_sqrt))
         return
