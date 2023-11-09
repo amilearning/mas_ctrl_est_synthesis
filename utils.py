@@ -2,6 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from enum import Enum
 
+import math
+from scipy import linalg as la
+from numpy.linalg import det
+
+
 # Define an enumeration class
 class CtrlTypes(Enum):
     LQROutputFeedback = 0
@@ -265,3 +270,11 @@ def get_chain_adj_mtx(N):
         adjacency_matrix[i,i] = 1
     # np.diag(adjacency_matrix) = 1
     return adjacency_matrix
+
+
+def compute_mahalanobix_dist(A,B):
+    k = A.shape[0]
+    e_cov_next_inv = la.solve(B, np.eye(B.shape[0]))
+    tmp = np.dot(e_cov_next_inv, A)
+    dKL = 0.5 * (np.trace(tmp) - k - np.log(det(tmp)))                
+    return dKL

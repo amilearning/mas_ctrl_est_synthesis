@@ -78,28 +78,28 @@ if __name__ == "__main__":
     args = {}        
     args['Ts'] = 0.1       
     args['N'] = N_agent
-    args['w_std'] = 0.001  # w std for each agent 
+    args['w_std'] = 0.1  # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1# v std for each agent.     
     # args['v_std'][0] = 1        
-    # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-    args['c'] = get_chain_adj_mtx(N_agent) 
+    args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
+    # args['c'] = get_chain_adj_mtx(N_agent) 
     args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
     args['n'] = 4
     args['p'] = 2
     args['Q'] = np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
     
-    args['R'] = np.eye(N_agent)*1e-2
-    args['sim_n_step'] = 100
+    args['R'] = np.eye(N_agent)
+    args['sim_n_step'] = 200
     args['ctrl_type'] = 0
     synthesis = ControlEstimationSynthesis(args)
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
     # CtrlEstFeedback = 2    
-   
     lqr_result = mcmc_simulatoin(args,CtrlTypes.LQROutputFeedback)
+    opt_result = mcmc_simulatoin(args,CtrlTypes.CtrlEstFeedback)    
     sub_result = mcmc_simulatoin(args,CtrlTypes.SubOutpFeedback)
-    opt_result = mcmc_simulatoin(args,CtrlTypes.CtrlEstFeedback)
+    
     
     plot_comparison_result(lqr_result, sub_result, opt_result)
     

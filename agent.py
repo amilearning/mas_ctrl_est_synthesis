@@ -29,10 +29,8 @@ class Agent:
         self.xhat = np.zeros([self.n,1])
         self.xcov = np.eye(self.n*self.N)
         
-
         # input 
         self.u = np.zeros([self.p,1])
-        
         
         self.N = args['N'] 
                 
@@ -96,14 +94,12 @@ class Agent:
     def set_gain(self,F):
         self.F = F
         
-        
     def set_measurement(self,x_all):        
-        noise_scale = np.diag(self.v_cov).reshape(-1, 1)
+        noise_scale = np.diag(np.sqrt(self.v_cov)).reshape(-1, 1)
+        # random normal takes std as scale, but v_cov is in variance
         noise = np.random.normal(loc=0, scale=noise_scale)
-        # self.z = np.dot(self.Ci,x_all+noise) 
         self.z = x_all+noise
         
-    
     def get_x(self):
         return self.x.copy()
         
@@ -117,7 +113,8 @@ class Agent:
         self.x = state
         
     def step(self, u = None):        
-        scale = np.diag(self.w_cov).reshape(1, self.n)
+        scale = np.diag(np.sqrt(self.w_cov)).reshape(1, self.n)
+        # np.random.normal takes std, while w_cov is variance 
         disturbances = np.random.normal(loc=0, scale=scale, size=(1, self.n))        
         
         if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
@@ -146,35 +143,3 @@ class Agent:
             est_traj = np.array(self.xhat_mem)
         return est_traj.copy()
         
-   
-# if __name__ == "__main__":
-#     args = {}
-#     args['Ts'] = 0.1
-#     args['N'] = 5
-#     args['w_std'] = 0.1
-#     args['v_std'] = np.ones([5,1])*0.1
-#     args['L'] = np.diag([5,5,5,5,5])*5 - np.ones([5,5]) 
-#     obj = Agent(args)
-#     for i in range(100):
-#         obj.step()
-#     traj = obj.get_traj()
-    
-
-#     import matplotlib.pyplot as plt        
-#     x = traj[:,0]
-#     y = traj[:,1]  
-#     z = np.ones([len(traj[:,1]),1]) 
-#     fig = plt.figure()
-#     ax = fig.add_subplot(111, projection='3d')    
-#     ax.plot(x, y, z, label='Trajectory', linewidth=1, marker='o', markersize=1.5, markeredgecolor='blue', markeredgewidth=1, markerfacecolor='blue')
-
-#     # Add labels and title
-#     ax.set_xlabel('X')
-#     ax.set_ylabel('Y')    
-#     ax.set_title('3D Trajectory Plot')
-
-#     # Show a legend
-#     ax.legend()
-
-#     # Show the plot
-#     plt.show()
