@@ -236,7 +236,7 @@ class ControlEstimationSynthesis:
         prev_F = roll_F.copy()
         out_max_iter = 30
         in_max_iter = 300
-        
+        out_check_count = 0
         stage_cost_list = []
         P_norm_diff_list = []
         opt_P_list = []
@@ -266,8 +266,14 @@ class ControlEstimationSynthesis:
             opt_P_list.append(opt_P)
             if len(stage_cost_list) > 1:
                 stage_cost_diff = stage_cost_list[-2] - stage_cost_tmp
-                if stage_cost_diff < 1e-2:
-                    break
+                if stage_cost_diff < 1e-2:                    
+                    print("stage_cost_diff less then threshold")
+                    print(stage_cost_list) 
+                    out_check_count+=1
+            if out_check_count > 2:    
+                print("outer loop break")            
+                break
+
        
             
         print(stage_cost_list)      
@@ -298,7 +304,7 @@ class ControlEstimationSynthesis:
         K = -1*K_
         # enforcing the gain is in the subspace
         # K = (K* self.F_filter_mtx)
-        self.update_estimation_gains(K)    
+        
         return K
 
     def compute_phi(self,F):
@@ -345,6 +351,7 @@ class ControlEstimationSynthesis:
             e_cov_next = (eye_lc - LC) @ p_cov @ (eye_lc - LC).T + LC @ self.v_covs @ LC.T+ jitter * eye_lc
             # cov_diff = np.linalg.norm((e_cov_next-cov), 'fro')
             cov_diff = compute_mahalanobix_dist(e_cov_next, cov)            
+            print("cov_diff = {}".format(cov_diff))
             opt_L = L.copy()            
             cov = e_cov_next.copy()
             if cov_diff < 1e-2:                

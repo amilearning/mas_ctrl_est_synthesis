@@ -28,7 +28,7 @@ class MASsimulation:
         sim_step = args['sim_n_step']
         self.ctrl_type = args['ctrl_type']
         
-        self.offset = get_formation_offset_vector(self.N, self.n, dist = 0.5)
+        self.offset = get_formation_offset_vector(self.N, self.n, dist = 20.0)
         self.synthesis = ControlEstimationSynthesis(args)
      
         self.eval = MASEval(args)
@@ -142,13 +142,13 @@ class MASsimulation:
 if __name__ == "__main__":
     args = {}
     args['Ts'] = 0.1
-    N_agent = 5
+    N_agent = 20
     args['N'] = N_agent
     args['w_std'] = 0.1 # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
-    args['v_std'][0] = 1.0
-    args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-    # args['c'] = get_chain_adj_mtx(N_agent) 
+    args['v_std'][0] = 0.5
+    # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
+    args['c'] = get_chain_adj_mtx(N_agent) 
     # args['c'] = np.array([[1,1,0,0,0],
     #                       [1,1,1,0,0],
     #                       [0,1,1,1,0],

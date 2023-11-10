@@ -14,7 +14,7 @@ def count_completed_tasks(futures):
     return sum(1 for future in futures if future.done())
 
 def mcmc_simulatoin(args, ctrl_type : CtrlTypes):
-    num_simulations = 100  # Define the number of parallel simulations
+    num_simulations = 300  # Define the number of parallel simulations
     max_concurrent_processes = 10  # Define the maximum number of concurrent processes
 
     # Create a list of argument dictionaries for each simulation
@@ -73,16 +73,24 @@ def mcmc_simulatoin(args, ctrl_type : CtrlTypes):
 # # Show the plot
 # plt.show()
 
+def get_fully_connected_args(args):
+    new_args = args.copy()
+    new_args['c'] =  np.ones([args['N'],args['N']]) # adjencency matrix 
+    new_args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
+    
+
+
 if __name__ == "__main__":
     N_agent = 5
+    
     args = {}        
     args['Ts'] = 0.1       
     args['N'] = N_agent
     args['w_std'] = 0.1  # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1# v std for each agent.     
-    # args['v_std'][0] = 1        
-    args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-    # args['c'] = get_chain_adj_mtx(N_agent) 
+    args['v_std'][0] = 0.5        
+    # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
+    args['c'] = get_chain_adj_mtx(N_agent) 
     args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
     args['n'] = 4
     args['p'] = 2
@@ -91,6 +99,8 @@ if __name__ == "__main__":
     args['R'] = np.eye(N_agent)
     args['sim_n_step'] = 200
     args['ctrl_type'] = 0
+    
+    fullyconnected_args = get_fully_connected_args(args)
     synthesis = ControlEstimationSynthesis(args)
 
     # LQROutputFeedback = 0
