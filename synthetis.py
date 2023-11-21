@@ -29,10 +29,11 @@ class ControlEstimationSynthesis:
         self.p = args['p']
         self.Q = args['Q']
         self.R = args['R']
-        self.adj = args['c']        
+        self.adj = args['c']    
+        self.ctrl_type = args['ctrl_type']    
         self.F_filter_mtx = np.kron(self.adj,np.ones([self.p,self.n]))
 
-        self.Q_tilde = np.kron(self.Q,np.eye(self.n))      #  np.kron(self.L, self.Q)   #
+        self.Q_tilde = self.Q # np.kron(self.Q,np.eye(self.n))      #  np.kron(self.L, self.Q)   #
         self.R_tilde = np.kron(self.R, np.eye(self.p))             
         self.agents = []
         
@@ -77,7 +78,11 @@ class ControlEstimationSynthesis:
         
                 
         self.data = None
-        data_load = self.load_gains()   
+        file_name_ = None
+        if 'gain_file_name' in args:
+            file_name_ = args['gain_file_name']
+         
+        data_load = self.load_gains(file_name=file_name_)   
         ############### hard FAlse
         ############### hard FAlse
         # data_load = False
@@ -98,25 +103,35 @@ class ControlEstimationSynthesis:
             self.est_gains = self.data['est_gains']  
             self.opt_gain = self.data['opt_gain']          
             self.sub_gain = self.data['sub_gain']
-        else:           
-            self.lqr_gain = self.compute_lpr_gain()  
+            if 'opt_stage_cost' in self.data:
+                self.opt_stage_cost = self.data['opt_stage_cost']
+        else:                       
+            self.lqr_gain = self.compute_lpr_gain()              
             print('lqr solution found')     
             self.sub_gain = self.compute_suboptimal_gain()     
             print('suboptimal solution found')     
-            self.opt_gain = self.ctrl_est_synthesis(init_gain_guess = self.lqr_gain)
+            if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
+                self.opt_gain = self.ctrl_est_synthesis(init_gain_guess = self.lqr_gain)
+            else:
+                self.opt_gain = np.zeros(self.lqr_gain.shape)
+                self.est_gains = []
+                self.opt_stage_cost = 0
+
+                
             print('opt gains found')     
             
-            self.save_gains()
+            self.save_gains(file_name=file_name_)
         
         if data_load is False:
             print("gains generated")
         
      
-    def load_gains(self,file_name = None):             
+    def load_gains(self,file_name = None):                     
         script_dir = os.path.dirname(os.path.abspath(__file__))
         data_dir = os.path.join(script_dir, 'data')  # Create a 'data' directory in the same folder as your script
         if file_name is None:
             file_name = 'gains.pkl'
+    
         file_path = os.path.join(data_dir, file_name)
         if os.path.exists(file_path):
             with open(file_path, 'rb') as file:
@@ -138,7 +153,8 @@ class ControlEstimationSynthesis:
                 'w_covs': self.w_covs,
                 'v_covs': self.v_covs,
                 'adj_matrix' : self.adj,
-                'args':self.args}
+                'args':self.args,
+                'opt_stage_cost':self.opt_stage_cost}
         if file_name is None:
             file_name = 'gains.pkl'
         file_path = os.path.join(data_dir, file_name)
@@ -244,17 +260,18 @@ class ControlEstimationSynthesis:
          
         self.update_estimation_gains(roll_F)   
         for out_ier in range(out_max_iter):
-            print("outer iter = {}".format(out_ier)) 
-                      
-            for in_ier in range(in_max_iter):                  
-                roll_F = self.F_derivative_update(roll_P, self.sigmaBarx)                                                 
-                # roll_F =self.lqr_F_update(roll_P) ## original LQR derivativeW         
+            print("outer iter = {}".format(out_ier))                       
+            for in_ier in range(in_max_iter):                                  
+                if self.ctrl_type == CtrlTypes.LQGFeedback:
+                    roll_F =self.lqr_F_update(roll_P) ## original LQR derivativeW         
+                else:
+                    roll_F = self.F_derivative_update(roll_P, self.sigmaBarx)                                                                 
                 next_P = self.riccati_update(roll_P,self.Q_tilde,self.R_tilde,roll_F)            
                 opt_F, opt_P = roll_F.copy(), next_P.copy()                
                 p_norm_diff = np.linalg.norm((next_P-roll_P), 'fro')
                 # p_norm_diff = compute_mahalanobix_dist(next_P, roll_P)            
                 P_norm_diff_list.append(p_norm_diff)
-                print("p_norm_diff = " + str(p_norm_diff))
+                # print("p_norm_diff = " + str(p_norm_diff))
                 if p_norm_diff < 1e-3:             
                     break 
                 else:
@@ -270,7 +287,7 @@ class ControlEstimationSynthesis:
                     print("stage_cost_diff less then threshold")
                     print(stage_cost_list) 
                     out_check_count+=1
-            if out_check_count > 2:    
+            if out_check_count > 1:    
                 print("outer loop break")            
                 break
 
@@ -281,8 +298,8 @@ class ControlEstimationSynthesis:
         opt_F = opt_F_list[min_idx]
         opt_P = opt_P_list[min_idx]
         self.update_estimation_gains(opt_F)        
-        opt_stage_cost = self.compute_stage_cost(opt_P, opt_F, self.sigmaBarx)
-        print("optimized stage cost = {:.3f}".format(opt_stage_cost))
+        self.opt_stage_cost = self.compute_stage_cost(opt_P, opt_F, self.sigmaBarx)
+        print("optimized stage cost = {:.3f}".format(self.opt_stage_cost))
     
 
                   
@@ -304,7 +321,7 @@ class ControlEstimationSynthesis:
         K = -1*K_
         # enforcing the gain is in the subspace
         # K = (K* self.F_filter_mtx)
-        
+        print("Trace(PW) of LQR = {}".format(np.trace(S_@self.w_covs)))
         return K
 
     def compute_phi(self,F):
@@ -351,7 +368,7 @@ class ControlEstimationSynthesis:
             e_cov_next = (eye_lc - LC) @ p_cov @ (eye_lc - LC).T + LC @ self.v_covs @ LC.T+ jitter * eye_lc
             # cov_diff = np.linalg.norm((e_cov_next-cov), 'fro')
             cov_diff = compute_mahalanobix_dist(e_cov_next, cov)            
-            print("cov_diff = {}".format(cov_diff))
+            # print("cov_diff = {}".format(cov_diff))
             opt_L = L.copy()            
             cov = e_cov_next.copy()
             if cov_diff < 1e-2:                

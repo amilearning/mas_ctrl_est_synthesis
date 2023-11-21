@@ -31,7 +31,7 @@ if __name__ == "__main__":
         args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
         args['n'] = 4
         args['p'] = 2
-        args['Q'] = np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
+        args['Q'] = np.kron(args['L'], np.eye(args['n'])) # np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
         args['R'] = np.eye(N_agent)
         args['sim_n_step'] = 200
 

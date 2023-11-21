@@ -117,7 +117,7 @@ class Agent:
         # np.random.normal takes std, while w_cov is variance 
         disturbances = np.random.normal(loc=0, scale=scale, size=(1, self.n))        
         
-        if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+        if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
             input = np.dot(np.dot(self.Mi,self.F),self.xhat-self.offset).copy()
         else:
             input = np.dot(np.dot(self.Mi,self.F),self.z-self.offset)

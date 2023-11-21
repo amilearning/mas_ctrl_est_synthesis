@@ -4,6 +4,9 @@ from utils import *
 import concurrent.futures
 import time
 from synthetis import ControlEstimationSynthesis
+import pickle
+import os
+
 def run_simulation(args):
     sim = MASsimulation(args)
     # The constructor of MASsimulation starts the simulation automatically, no need to call run_sim here
@@ -13,8 +16,8 @@ def count_completed_tasks(futures):
     # Count the number of completed tasks
     return sum(1 for future in futures if future.done())
 
-def mcmc_simulatoin(args, ctrl_type : CtrlTypes):
-    num_simulations = 300  # Define the number of parallel simulations
+def mcmc_simulatoin(num_simulations = 100, args = None, ctrl_type  = CtrlTypes.LQROutputFeedback):
+    
     max_concurrent_processes = 10  # Define the maximum number of concurrent processes
 
     # Create a list of argument dictionaries for each simulation
@@ -77,39 +80,112 @@ def get_fully_connected_args(args):
     new_args = args.copy()
     new_args['c'] =  np.ones([args['N'],args['N']]) # adjencency matrix 
     new_args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
+    new_args['gain_file_name'] = 'fully' + str(args['N'])
+    return new_args
     
 
 
 if __name__ == "__main__":
-    N_agent = 5
     
+    lqr_results = []
+    lqg_results = []
+    opt_results = []
+    sub_results = []
+    fullyconnected_synthesis_list = []
+    partial_synthesis_list = []
+
+    num_simulations = 100  # Define the number of parallel simulations
     args = {}        
-    args['Ts'] = 0.1       
-    args['N'] = N_agent
-    args['w_std'] = 0.1  # w std for each agent 
-    args['v_std'] = np.ones([N_agent,1])*0.1# v std for each agent.     
-    args['v_std'][0] = 0.5        
-    # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-    args['c'] = get_chain_adj_mtx(N_agent) 
-    args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
+    args['sim_n_step'] = 300
     args['n'] = 4
     args['p'] = 2
-    args['Q'] = np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
-    
-    args['R'] = np.eye(N_agent)
-    args['sim_n_step'] = 200
+    args['Ts'] = 0.1   
     args['ctrl_type'] = 0
+    w_std = 0.1     
+    v_std = 0.1   
     
-    fullyconnected_args = get_fully_connected_args(args)
-    synthesis = ControlEstimationSynthesis(args)
+    # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
 
-    # LQROutputFeedback = 0
-    # SubOutpFeedback = 1 
-    # CtrlEstFeedback = 2    
-    lqr_result = mcmc_simulatoin(args,CtrlTypes.LQROutputFeedback)
-    opt_result = mcmc_simulatoin(args,CtrlTypes.CtrlEstFeedback)    
-    sub_result = mcmc_simulatoin(args,CtrlTypes.SubOutpFeedback)
+    num_agent_list = [5]
+    for idx, N_agent in enumerate(num_agent_list):
+               
+        args['N'] = N_agent
+        args['w_std'] = w_std  # w std for each agent 
+        args['v_std'] = np.ones([N_agent,1])*v_std# v std for each agent.     
+        args['v_std'][0] = args['v_std'][0]*5            
+        args['c'] = get_chain_adj_mtx(N_agent) 
+        args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
+        args['Q'] = np.kron(args['L'], np.eye(args['n'])) # np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])    
+        args['R'] = np.eye(N_agent)
+        
+
+        fullyconnected_args = get_fully_connected_args(args.copy())
+        fullyconnected_args['gain_file_name'] = 'lqg' + str(args['N'])
+        fullyconnected_args['ctrl_type'] = CtrlTypes.LQGFeedback
+        fullyconnected_synthesis = ControlEstimationSynthesis(fullyconnected_args)
+        fullyconnected_synthesis_list.append(fullyconnected_synthesis)
+
+
+        sub_args = args.copy()
+        sub_args['gain_file_name'] = 'sub' + str(args['N'])
+        sub_args['ctrl_type'] = CtrlTypes.SubOutpFeedback
+        sub_synthesis = ControlEstimationSynthesis(sub_args)
+        
+        partial_args = args.copy()
+        partial_args['gain_file_name'] = 'ctrlest' +str(args['N'])    
+        partial_args['ctrl_type'] = CtrlTypes.CtrlEstFeedback
+        partial_synthesis = ControlEstimationSynthesis(partial_args)
+        partial_synthesis_list.append(partial_synthesis)
+        
+        # LQROutputFeedback = 0        
+        # SubOutpFeedback = 1 
+        # CtrlEstFeedback = 2 
+        # LQGFeedback 3   
+        
+        # lqr_result = mcmc_simulatoin(num_simulations, fullyconnected_args,CtrlTypes.LQROutputFeedback)
+        # lqr_results.append(lqr_result) 
+        # print('LQR with {} agents Done'.format(N_agent))
+
+        lqg_result = mcmc_simulatoin(num_simulations, fullyconnected_args,CtrlTypes.LQGFeedback)
+        lqg_results.append(lqg_result) 
+        print('LQR with {} agents Done'.format(N_agent))
+
+        
+
+        sub_result = mcmc_simulatoin(num_simulations, partial_args,CtrlTypes.SubOutpFeedback)
+        sub_results.append(sub_result)  
+        print('Suboptimal with {} agents Done'.format(N_agent))
+
+        opt_result = mcmc_simulatoin(num_simulations, partial_args,CtrlTypes.CtrlEstFeedback)  
+        opt_results.append(opt_result)
+        
+        print('Opt with {} agents Done'.format(N_agent))
+        print('MCMCs with {} agents Done'.format(N_agent))
+               
+        
+        
+        
+
+    save_data = {}
+    save_data['args'] = args
+    save_data['num_agent_list'] = num_agent_list    
+    # save_data['lqr_results'] = lqr_results
+    save_data['lqg_results'] = lqg_results
+    save_data['opt_results'] = opt_results
+    save_data['sub_results'] = sub_results
+    # save_data['partial_synthesis_list'] = partial_synthesis_list
+    # save_data['fullyconnected_synthesis_list'] = fullyconnected_synthesis_list
     
     
-    plot_comparison_result(lqr_result, sub_result, opt_result)
+    save_file_name = 'mcmc_experiment_' +str(1) + str('.pkl')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(script_dir, 'data')  # Create a 'data' directory in the same folder as your script
+    file_path = os.path.join(data_dir, save_file_name)  # Create a 'data' directory in the same folder as your script
+    if os.path.exists(file_path):
+        file_path = file_path.split('.pkl')[0]+'_copy.pkl'
+    with open(file_path, 'wb') as file:
+         pickle.dump(save_data,file)
+    
+
+    plot_comparison_result(lqg_results, sub_result, opt_result)
     

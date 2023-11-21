@@ -28,7 +28,7 @@ class MASsimulation:
         sim_step = args['sim_n_step']
         self.ctrl_type = args['ctrl_type']
         
-        self.offset = get_formation_offset_vector(self.N, self.n, dist = 20.0)
+        self.offset = get_formation_offset_vector(self.N, self.n, dist = 0.0)
         self.synthesis = ControlEstimationSynthesis(args)
      
         self.eval = MASEval(args)
@@ -68,7 +68,7 @@ class MASsimulation:
                         self.agents[i].set_MAS_info(self.synthesis.Atilde,self.synthesis.Btilde, self.synthesis.w_covs, self.synthesis.v_covs)
                         self.agents[i].set_xhat(self.X)
                         
-                if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+                if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
                     ########### Estimation  ######################                                                  
                     futures = []
                     for agent in self.agents:
@@ -93,13 +93,13 @@ class MASsimulation:
         est_trajs = []
         for i in range(self.N):
             tmp_traj = self.agents[i].get_traj()
-            if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+            if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
                 est_traj = self.agents[i].get_est_traj()    
                 est_trajs.append(est_traj)
             trajs.append(tmp_traj)
             
         self.eval.trajs = trajs
-        if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+        if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
             self.eval.est_trajs = est_trajs
         
         # self.eval.eval_init()
@@ -126,14 +126,14 @@ class MASsimulation:
             gain = self.synthesis.lqr_gain
         elif self.ctrl_type == CtrlTypes.SubOutpFeedback:
             gain = self.synthesis.sub_gain
-        elif self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+        elif self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
             gain = self.synthesis.opt_gain
 
         tmp_state = np.random.randn(4,1)*1e-3
         for i in range(self.N):
             self.agents[i].set_x(tmp_state)
             self.agents[i].set_gain(gain)
-            if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+            if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
                 self.agents[i].set_est_gain(self.synthesis.est_gains[i])
             self.agents[i].set_offset(self.offset)
 
@@ -142,7 +142,7 @@ class MASsimulation:
 if __name__ == "__main__":
     args = {}
     args['Ts'] = 0.1
-    N_agent = 20
+    N_agent = 15
     args['N'] = N_agent
     args['w_std'] = 0.1 # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
@@ -157,20 +157,21 @@ if __name__ == "__main__":
     args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix     
     args['n'] = 4
     args['p'] = 2
-    args['Q'] =  np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
+    args['Q'] = np.kron(args['L'], np.eye(args['n'])) #  np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])
     # np.array([[1,0,0,0],
     #                        [0,0,0,0],
     #                        [0,0,1,0],
     #                        [0,0,0,0]])
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
-    args['sim_n_step'] = 200
+    args['sim_n_step'] = 1000
+    args['gain_file_name'] = 'sub'
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
     # CtrlEstFeedback = 2
     
-    args['ctrl_type'] = CtrlTypes.CtrlEstFeedback
+    args['ctrl_type'] = CtrlTypes.SubOutpFeedback
 
     obj = MASsimulation(args)
     obj.eval.eval_init()
