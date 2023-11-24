@@ -8,6 +8,7 @@ import pickle
 
 from scipy import linalg as la
 from scipy.signal import cont2discrete
+from scipy.io import savemat
 
 
 
@@ -161,6 +162,12 @@ class ControlEstimationSynthesis:
         with open(file_path, 'wb') as file:
             pickle.dump(data, file)
             print(f"File '{file_path}' Saved.")
+        
+
+        # Write the dictionary to a .mat file
+        mat_file_name = file_name + '.mat'
+        mat_file_path =  os.path.join(data_dir, mat_file_name)
+        savemat(mat_file_path, data)
 
     def compute_suboptimal_gain(self):                
         ## assume the dynamics are the same for all agents

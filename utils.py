@@ -146,6 +146,13 @@ def plot_3dtraj(traj_list):
     plt.show()
     
 def plot_comparison_result(lqg_result, sub_result, opt_result):
+    if len(lqg_result) ==1:
+        lqg_result = lqg_result[0]
+    if len(sub_result) ==1:
+        sub_result = sub_result[0]
+    if len(opt_result) ==1:
+        opt_result = opt_result[0]
+
     costs = []
     costs.append(np.mean(lqg_result['stage_cost'], axis=0))
     costs.append(np.mean(sub_result['stage_cost'], axis=0))
@@ -271,6 +278,23 @@ def get_chain_adj_mtx(N):
         adjacency_matrix[i,i] = 1
     # np.diag(adjacency_matrix) = 1
     return adjacency_matrix
+
+def get_circular_adj_mtx(N):
+  
+
+    # Initialize an empty adjacency matrix filled with zeros
+    adj_matrix = np.zeros((N, N), dtype=int)
+
+    # Create connections in the circular graph
+    for i in range(N):
+        # Connect each node to its adjacent nodes
+        adj_matrix[i][(i + 1) % N] = 1  # Connect to the next node
+        adj_matrix[i][(i - 1) % N] = 1  # Connect to the previous node
+
+   
+    adj_matrix = adj_matrix + np.eye(N)
+
+    return adj_matrix
 
 
 def compute_mahalanobix_dist(A,B):

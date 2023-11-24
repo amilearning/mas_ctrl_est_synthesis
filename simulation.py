@@ -28,7 +28,7 @@ class MASsimulation:
         sim_step = args['sim_n_step']
         self.ctrl_type = args['ctrl_type']
         
-        self.offset = get_formation_offset_vector(self.N, self.n, dist = 0.0)
+        self.offset = get_formation_offset_vector(self.N, self.n, dist = 5.0)
         self.synthesis = ControlEstimationSynthesis(args)
      
         self.eval = MASEval(args)
@@ -55,6 +55,7 @@ class MASsimulation:
                 ## set measurements 
                 self.get_states()
                 self.get_inputs()
+            
                 stage_cost = self.compute_cost(self.X, self.U)                
                 self.eval.add_stage_cost(stage_cost)
                 futures = []
@@ -142,13 +143,15 @@ class MASsimulation:
 if __name__ == "__main__":
     args = {}
     args['Ts'] = 0.1
-    N_agent = 15
+    N_agent = 5
     args['N'] = N_agent
     args['w_std'] = 0.1 # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
-    args['v_std'][0] = 0.5
+    # args['v_std'][0] = 1.0
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-    args['c'] = get_chain_adj_mtx(N_agent) 
+    # args['c'] = get_chain_adj_mtx(N_agent) 
+    args['c'] = get_circular_adj_mtx(N_agent) 
+    
     # args['c'] = np.array([[1,1,0,0,0],
     #                       [1,1,1,0,0],
     #                       [0,1,1,1,0],
@@ -164,14 +167,14 @@ if __name__ == "__main__":
     #                        [0,0,0,0]])
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
-    args['sim_n_step'] = 1000
-    args['gain_file_name'] = 'sub'
+    args['sim_n_step'] = 200
+    args['gain_file_name'] = 'ctrlest5_0'
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
     # CtrlEstFeedback = 2
     
-    args['ctrl_type'] = CtrlTypes.SubOutpFeedback
+    args['ctrl_type'] = CtrlTypes.CtrlEstFeedback
 
     obj = MASsimulation(args)
     obj.eval.eval_init()

@@ -146,7 +146,7 @@ class GraphSynthesis:
 
 if __name__ == "__main__":
     args = {}
-    args['N'] = 10
+    args['N'] = 5
     args['n'] = 4
     num_of_sample = 100
     graphsynthesis = GraphSynthesis(args,n_sample = num_of_sample)

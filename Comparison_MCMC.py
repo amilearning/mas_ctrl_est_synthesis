@@ -94,9 +94,9 @@ if __name__ == "__main__":
     fullyconnected_synthesis_list = []
     partial_synthesis_list = []
 
-    num_simulations = 100  # Define the number of parallel simulations
+    num_simulations = 1000  # Define the number of parallel simulations
     args = {}        
-    args['sim_n_step'] = 300
+    args['sim_n_step'] = 500
     args['n'] = 4
     args['p'] = 2
     args['Ts'] = 0.1   
@@ -112,8 +112,9 @@ if __name__ == "__main__":
         args['N'] = N_agent
         args['w_std'] = w_std  # w std for each agent 
         args['v_std'] = np.ones([N_agent,1])*v_std# v std for each agent.     
-        args['v_std'][0] = args['v_std'][0]*5            
-        args['c'] = get_chain_adj_mtx(N_agent) 
+        # args['v_std'][0] = args['v_std'][0]*5            
+        # args['c'] = get_chain_adj_mtx(N_agent) 
+        args['c'] = get_circular_adj_mtx(N_agent) 
         args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
         args['Q'] = np.kron(args['L'], np.eye(args['n'])) # np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])    
         args['R'] = np.eye(N_agent)
@@ -187,5 +188,5 @@ if __name__ == "__main__":
          pickle.dump(save_data,file)
     
 
-    plot_comparison_result(lqg_results, sub_result, opt_result)
+    plot_comparison_result(lqg_results, sub_results, opt_results)
     
