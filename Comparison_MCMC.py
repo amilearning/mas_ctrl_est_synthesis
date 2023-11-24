@@ -91,16 +91,19 @@ if __name__ == "__main__":
     lqg_results = []
     opt_results = []
     sub_results = []
+    comlqg_results = []
+    comlqg_5_results = []
     fullyconnected_synthesis_list = []
     partial_synthesis_list = []
 
     num_simulations = 1000  # Define the number of parallel simulations
     args = {}        
-    args['sim_n_step'] = 500
+    args['sim_n_step'] = 300
     args['n'] = 4
     args['p'] = 2
     args['Ts'] = 0.1   
     args['ctrl_type'] = 0
+    args['gamma'] = 1
     w_std = 0.1     
     v_std = 0.1   
     
@@ -132,6 +135,20 @@ if __name__ == "__main__":
         sub_args['ctrl_type'] = CtrlTypes.SubOutpFeedback
         sub_synthesis = ControlEstimationSynthesis(sub_args)
         
+        comglqg_args = args.copy()
+        comglqg_args['gain_file_name'] = 'comlqg' + str(args['N'])
+        comglqg_args['ctrl_type'] = CtrlTypes.COMLQG
+        comglqg_args['gamma'] = 1
+        comglqg_synthesis = ControlEstimationSynthesis(comglqg_args)
+
+
+        comglqg_5_args = args.copy()
+        comglqg_5_args['gain_file_name'] = 'comlqg_5' + str(args['N'])
+        comglqg_5_args['ctrl_type'] = CtrlTypes.COMLQG
+        comglqg_5_args['gamma'] = 5
+        comglqg_5_synthesis = ControlEstimationSynthesis(comglqg_5_args)
+
+
         partial_args = args.copy()
         partial_args['gain_file_name'] = 'ctrlest' +str(args['N'])    
         partial_args['ctrl_type'] = CtrlTypes.CtrlEstFeedback
@@ -153,9 +170,19 @@ if __name__ == "__main__":
 
         
 
-        sub_result = mcmc_simulatoin(num_simulations, partial_args,CtrlTypes.SubOutpFeedback)
+        sub_result = mcmc_simulatoin(num_simulations, sub_args,CtrlTypes.SubOutpFeedback)
         sub_results.append(sub_result)  
         print('Suboptimal with {} agents Done'.format(N_agent))
+
+        comlqg_result = mcmc_simulatoin(num_simulations, comglqg_args,CtrlTypes.COMLQG)
+        comlqg_results.append(comlqg_result)  
+        print('Comlqg with {} agents Done'.format(N_agent))
+    
+        comlqg_5_result = mcmc_simulatoin(num_simulations, comglqg_5_args,CtrlTypes.COMLQG)
+        comlqg_5_results.append(comlqg_5_result)  
+        print('Comlqg_5 with {} agents Done'.format(N_agent))
+
+
 
         opt_result = mcmc_simulatoin(num_simulations, partial_args,CtrlTypes.CtrlEstFeedback)  
         opt_results.append(opt_result)
@@ -174,6 +201,8 @@ if __name__ == "__main__":
     save_data['lqg_results'] = lqg_results
     save_data['opt_results'] = opt_results
     save_data['sub_results'] = sub_results
+    save_data['comlqg_results'] = comlqg_results
+    save_data['comlqg_5_results'] = comlqg_5_results
     # save_data['partial_synthesis_list'] = partial_synthesis_list
     # save_data['fullyconnected_synthesis_list'] = fullyconnected_synthesis_list
     
@@ -188,5 +217,5 @@ if __name__ == "__main__":
          pickle.dump(save_data,file)
     
 
-    plot_comparison_result(lqg_results, sub_results, opt_results)
+    plot_comparison_result(lqg_results, sub_results, opt_results, comlqg_results, comlqg_5_results)
     

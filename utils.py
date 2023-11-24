@@ -13,6 +13,7 @@ class CtrlTypes(Enum):
     SubOutpFeedback = 1 
     CtrlEstFeedback = 2
     LQGFeedback = 3
+    COMLQG = 4
     
 
 
@@ -145,7 +146,7 @@ def plot_3dtraj(traj_list):
     ax.legend()
     plt.show()
     
-def plot_comparison_result(lqg_result, sub_result, opt_result):
+def plot_comparison_result(lqg_result, sub_result, opt_result, comlqg_result, comlqg_5_result):
     if len(lqg_result) ==1:
         lqg_result = lqg_result[0]
     if len(sub_result) ==1:
@@ -153,14 +154,24 @@ def plot_comparison_result(lqg_result, sub_result, opt_result):
     if len(opt_result) ==1:
         opt_result = opt_result[0]
 
+    if len(comlqg_result) ==1:
+        comlqg_result = comlqg_result[0]
+
+    if len(comlqg_5_result) ==1:
+        comlqg_5_result = comlqg_5_result[0]
+
     costs = []
     costs.append(np.mean(lqg_result['stage_cost'], axis=0))
     costs.append(np.mean(sub_result['stage_cost'], axis=0))
     costs.append(np.mean(opt_result['stage_cost'], axis=0))
+    costs.append(np.mean(comlqg_result['stage_cost'], axis=0))
+    costs.append(np.mean(comlqg_5_result['stage_cost'], axis=0))
 
     plt.plot(costs[0].squeeze(), label='lqg')
     plt.plot(costs[1].squeeze(), label='suboptimal')
     plt.plot(costs[2].squeeze(), label='ctrlest')
+    plt.plot(costs[3].squeeze(), label='comlqg')
+    plt.plot(costs[4].squeeze(), label='comlqg5')
 
     # Set plot labels and title
     plt.xlabel('Time Step')

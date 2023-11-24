@@ -9,12 +9,12 @@ import pickle
 from scipy import linalg as la
 from scipy.signal import cont2discrete
 from scipy.io import savemat
-from scipy.linalg import solve_discrete_are
+
 
 
 enable_debug_mode = False
 
-class ControlEstimationSynthesis:
+class COMLQGSynthesis:
     # Constructor method (optional)
     def __init__(self, args):
         
@@ -47,7 +47,6 @@ class ControlEstimationSynthesis:
         self.Btilde = []
         self.w_covs = []
         self.v_covs = []
-        self.v_covs_list =[]
         self.Hi = []
         
         for i in range(self.N):
@@ -70,7 +69,6 @@ class ControlEstimationSynthesis:
         self.Bbar = np.kron(np.ones([1,self.N]),self.Btilde)
         self.Mbar = block_diagonal_matrix(self.Mbar)
         self.w_covs = block_diagonal_matrix(self.w_covs)
-        self.v_covs_list = self.v_covs.copy()
         self.v_covs = block_diagonal_matrix(self.v_covs)
         if enable_debug_mode:
             display_array_in_window(self.Atilde)
@@ -106,23 +104,16 @@ class ControlEstimationSynthesis:
             self.est_gains = self.data['est_gains']  
             self.opt_gain = self.data['opt_gain']          
             self.sub_gain = self.data['sub_gain']
-            self.kalman_gain = self.data['kalman_gain']
             if 'opt_stage_cost' in self.data:
                 self.opt_stage_cost = self.data['opt_stage_cost']
         else:                       
-            self.kalman_gain = np.zeros(1)
             self.lqr_gain = self.compute_lpr_gain()              
             print('lqr solution found')     
             self.sub_gain = self.compute_suboptimal_gain()     
             print('suboptimal solution found')     
             if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
                 self.opt_gain = self.ctrl_est_synthesis(init_gain_guess = self.lqr_gain)
-            elif self.ctrl_type == CtrlTypes.COMLQG:
-                self.update_estimation_gains(self.lqr_gain)
-                self.kalman_gain = self.compute_dist_kalman()
-                self.opt_gain = np.zeros(self.lqr_gain.shape)
-                self.opt_stage_cost = 0
-                print("com lqg done")
+         
             else:
                 self.opt_gain = np.zeros(self.lqr_gain.shape)
                 self.est_gains = []
@@ -160,7 +151,6 @@ class ControlEstimationSynthesis:
         data = {'lqr_gain': self.lqr_gain,
                 'opt_gain': self.opt_gain,
                 'est_gains': self.est_gains,
-                'kalman_gain': self.kalman_gain,
                 'sub_gain': self.sub_gain,
                 'w_covs': self.w_covs,
                 'v_covs': self.v_covs,
@@ -258,29 +248,6 @@ class ControlEstimationSynthesis:
         updated_F = matrixEquationSolver(Atmp,Btmp,rrmtx)
         
         return updated_F
-
-    def compute_dist_kalman(self):
-    #    X =A' XA -A'XB(R+B'XB)^-1 B'XA + Q
-    #    P = APA  -APC'(CPC' + R)^-1CPA' + Q
-    #    X = P 
-    #    A = Atilde^T
-    #    B = C^T --> Col(Hi)
-    #    R = R, Q = Q     
-      
-        v_covs = [self.Hi[i] @ self.v_covs_list[i] @ self.Hi[i].T for i in range(len(self.Hi))]
-        v_covs_diag = block_diagonal_matrix(v_covs)   
-        Bmtx = np.vstack(self.Hi).T         
-        P = solve_discrete_are(self.Atilde, Bmtx, self.w_covs, v_covs_diag, e=None, s=None, balanced=True)
-        
-        kalman_gains = []
-        tmp = np.eye(P.shape[0]) + Bmtx @ np.linalg.inv(v_covs_diag) @ Bmtx.T @ P
-        tmpp = np.linalg.inv(tmp)
-        for i in range(self.N):              
-            kal_tmp = self.N * P @ tmpp @ self.Hi[i].T @ np.linalg.inv(v_covs[i])            
-            kalman_gains.append(kal_tmp.copy())
-
-      
-        return kalman_gains
 
     def update_estimation_gains(self,roll_F):
         self.est_gains, self.est_covs = self.compute_est_gain(roll_F)

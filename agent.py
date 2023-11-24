@@ -88,6 +88,8 @@ class Agent:
         self.xhat_mem.append(updated_xhat.copy())        
         return
     
+    
+
     def set_est_gain(self,est_gain):
         self.est_gain = est_gain
         

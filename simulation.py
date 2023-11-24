@@ -27,6 +27,8 @@ class MASsimulation:
         self.R = args['R']
         sim_step = args['sim_n_step']
         self.ctrl_type = args['ctrl_type']
+        self.gamma = args['gamma']
+        
         
         self.offset = get_formation_offset_vector(self.N, self.n, dist = 5.0)
         self.synthesis = ControlEstimationSynthesis(args)
@@ -38,7 +40,10 @@ class MASsimulation:
         self.agents = self.synthesis.agents
         self.init_MAS()        
         self.X = np.zeros([self.N*self.n,1])
-        self.run_sim(sim_step)
+        if self.ctrl_type == CtrlTypes.COMLQG:
+            self.run_com_sim(sim_step)
+        else:
+            self.run_sim(sim_step)
         self.eval_ready() 
         
         
@@ -86,8 +91,52 @@ class MASsimulation:
                 
    
                 
+    def run_com_sim(self,num_time_steps):
+        delta = np.sort(np.linalg.eigvals(self.L))[-1] + 0.1        
 
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.N) as executor:
+            for time_step in range(num_time_steps):
+                ## set measurements 
+                self.get_states()
+                self.get_inputs()
+            
+                stage_cost = self.compute_cost(self.X, self.U)                
+                self.eval.add_stage_cost(stage_cost)
+                futures = []
+                for agent in self.agents:
+                    futures.append(executor.submit(agent.set_measurement(self.X)))                    
+                # Wait for all agent step functions to complete
+                
+                concurrent.futures.wait(futures)
+                if time_step ==0 :
+                    for i in range(self.N):
+                        self.agents[i].set_MAS_info(self.synthesis.Atilde,self.synthesis.Btilde, self.synthesis.w_covs, self.synthesis.v_covs)
+                        self.agents[i].set_xhat(self.X)
+                        
+                ########### Estimation  ######################                 
+                                         
+               
+                futures = []
+                for agent in self.agents:
+                    futures.append(executor.submit(agent.est_step()))                                                    
+                concurrent.futures.wait(futures)                            
 
+                # est consensus 
+                consensus_mtx = -1*(1/delta)*np.kron(self.L,np.eye(self.N*self.n))                
+                roll_xhat = np.vstack([agent.xhat.copy() for agent in self.agents])
+                for i in range(self.gamma):
+                    roll_xhat = roll_xhat+ consensus_mtx @ roll_xhat 
+                for i in range(self.N):
+                    consensus_est = roll_xhat[i*self.N*self.n:(i+1)*self.N*self.n]
+                    self.agents[i].set_xhat(consensus_est.copy())
+                ###########   ######################                                                  
+                
+                ########### Dynamics prpogate ###########                                          
+                futures = []
+                for agent in self.agents:
+                    futures.append(executor.submit(agent.step()))                                                    
+                concurrent.futures.wait(futures)                                
+                ########### ################## ##########
         
     def eval_ready(self):
         trajs = []
@@ -129,6 +178,9 @@ class MASsimulation:
             gain = self.synthesis.sub_gain
         elif self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
             gain = self.synthesis.opt_gain
+        elif self.ctrl_type == CtrlTypes.COMLQG:
+            gain = self.synthesis.lqr_gain
+    
 
         tmp_state = np.random.randn(4,1)*1e-3
         for i in range(self.N):
@@ -136,6 +188,8 @@ class MASsimulation:
             self.agents[i].set_gain(gain)
             if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
                 self.agents[i].set_est_gain(self.synthesis.est_gains[i])
+            elif self.ctrl_type == CtrlTypes.COMLQG:
+                self.agents[i].set_est_gain(self.synthesis.kalman_gain[i])
             self.agents[i].set_offset(self.offset)
 
                 
@@ -151,7 +205,7 @@ if __name__ == "__main__":
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
     # args['c'] = get_chain_adj_mtx(N_agent) 
     args['c'] = get_circular_adj_mtx(N_agent) 
-    
+    args['gamma'] = 1
     # args['c'] = np.array([[1,1,0,0,0],
     #                       [1,1,1,0,0],
     #                       [0,1,1,1,0],
@@ -168,13 +222,13 @@ if __name__ == "__main__":
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
     args['sim_n_step'] = 200
-    args['gain_file_name'] = 'ctrlest5_0'
+    args['gain_file_name'] = 'comlqg5_0'
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
     # CtrlEstFeedback = 2
-    
-    args['ctrl_type'] = CtrlTypes.CtrlEstFeedback
+    # COMLQG = 3
+    args['ctrl_type'] = CtrlTypes.COMLQG
 
     obj = MASsimulation(args)
     obj.eval.eval_init()
