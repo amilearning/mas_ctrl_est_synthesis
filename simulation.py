@@ -125,7 +125,8 @@ class MASsimulation:
                 consensus_mtx = -1*(1/delta)*np.kron(self.L,np.eye(self.N*self.n))                
                 roll_xhat = np.vstack([agent.xhat.copy() for agent in self.agents])
                 for i in range(self.gamma):
-                    roll_xhat = roll_xhat+ consensus_mtx @ roll_xhat 
+                    tmp = consensus_mtx @ roll_xhat 
+                    roll_xhat = roll_xhat + tmp.copy()
                 for i in range(self.N):
                     consensus_est = roll_xhat[i*self.N*self.n:(i+1)*self.N*self.n]
                     self.agents[i].set_xhat(consensus_est.copy())
@@ -205,7 +206,7 @@ if __name__ == "__main__":
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
     # args['c'] = get_chain_adj_mtx(N_agent) 
     args['c'] = get_circular_adj_mtx(N_agent) 
-    args['gamma'] = 1
+    args['gamma'] = 20
     # args['c'] = np.array([[1,1,0,0,0],
     #                       [1,1,1,0,0],
     #                       [0,1,1,1,0],

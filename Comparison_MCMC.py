@@ -104,8 +104,8 @@ if __name__ == "__main__":
     args['Ts'] = 0.1   
     args['ctrl_type'] = 0
     args['gamma'] = 1
-    w_std = 0.1     
-    v_std = 0.1   
+    w_std = 1     
+    v_std = 1   
     
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         comglqg_5_args = args.copy()
         comglqg_5_args['gain_file_name'] = 'comlqg_5' + str(args['N'])
         comglqg_5_args['ctrl_type'] = CtrlTypes.COMLQG
-        comglqg_5_args['gamma'] = 5
+        comglqg_5_args['gamma'] = 20
         comglqg_5_synthesis = ControlEstimationSynthesis(comglqg_5_args)
 
 
