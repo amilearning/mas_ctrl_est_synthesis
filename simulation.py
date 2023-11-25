@@ -92,7 +92,7 @@ class MASsimulation:
    
                 
     def run_com_sim(self,num_time_steps):
-        delta = np.sort(np.linalg.eigvals(self.L))[-1] + 0.1        
+        delta = np.sort(np.linalg.eigvals(self.L))[-1] + 20.1        
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.N) as executor:
             for time_step in range(num_time_steps):
@@ -200,13 +200,13 @@ if __name__ == "__main__":
     args['Ts'] = 0.1
     N_agent = 5
     args['N'] = N_agent
-    args['w_std'] = 0.1 # w std for each agent 
-    args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
+    args['w_std'] = 1.0 # w std for each agent 
+    args['v_std'] = np.ones([N_agent,1])*1.0 # v std for each agent.     
     # args['v_std'][0] = 1.0
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
     # args['c'] = get_chain_adj_mtx(N_agent) 
     args['c'] = get_circular_adj_mtx(N_agent) 
-    args['gamma'] = 20
+    args['gamma'] = 1
     # args['c'] = np.array([[1,1,0,0,0],
     #                       [1,1,1,0,0],
     #                       [0,1,1,1,0],
