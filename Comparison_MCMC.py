@@ -96,9 +96,9 @@ if __name__ == "__main__":
     fullyconnected_synthesis_list = []
     partial_synthesis_list = []
 
-    num_simulations = 500  # Define the number of parallel simulations
+    num_simulations = 1000  # Define the number of parallel simulations
     args = {}        
-    args['sim_n_step'] = 300
+    args['sim_n_step'] = 500
     args['n'] = 4
     args['p'] = 2
     args['Ts'] = 0.1   
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
 
-    num_agent_list = [5]
+    num_agent_list = [5,10,15]
     for idx, N_agent in enumerate(num_agent_list):
                
         args['N'] = N_agent
@@ -138,15 +138,15 @@ if __name__ == "__main__":
         comglqg_args = args.copy()
         comglqg_args['gain_file_name'] = 'comlqg' + str(args['N'])
         comglqg_args['ctrl_type'] = CtrlTypes.COMLQG
-        comglqg_args['gamma'] = 1
+        if N_agent == 5:
+            comglqg_args['gamma'] = 1
+        elif N_agent ==10:
+            comglqg_args['gamma'] = 10
+        elif N_agent ==15:
+            comglqg_args['gamma'] = 15
         comglqg_synthesis = ControlEstimationSynthesis(comglqg_args)
 
 
-        comglqg_5_args = args.copy()
-        comglqg_5_args['gain_file_name'] = 'comlqg_5' + str(args['N'])
-        comglqg_5_args['ctrl_type'] = CtrlTypes.COMLQG
-        comglqg_5_args['gamma'] = 5
-        comglqg_5_synthesis = ControlEstimationSynthesis(comglqg_5_args)
 
 
         partial_args = args.copy()
@@ -178,11 +178,6 @@ if __name__ == "__main__":
         comlqg_results.append(comlqg_result)  
         print('Comlqg with {} agents Done'.format(N_agent))
     
-        comlqg_5_result = mcmc_simulatoin(num_simulations, comglqg_5_args,CtrlTypes.COMLQG)
-        comlqg_5_results.append(comlqg_5_result)  
-        print('Comlqg_5 with {} agents Done'.format(N_agent))
-
-
 
         opt_result = mcmc_simulatoin(num_simulations, partial_args,CtrlTypes.CtrlEstFeedback)  
         opt_results.append(opt_result)
@@ -202,7 +197,6 @@ if __name__ == "__main__":
     save_data['opt_results'] = opt_results
     save_data['sub_results'] = sub_results
     save_data['comlqg_results'] = comlqg_results
-    save_data['comlqg_5_results'] = comlqg_5_results
     # save_data['partial_synthesis_list'] = partial_synthesis_list
     # save_data['fullyconnected_synthesis_list'] = fullyconnected_synthesis_list
     
@@ -217,5 +211,5 @@ if __name__ == "__main__":
          pickle.dump(save_data,file)
     
 
-    plot_comparison_result(lqg_results, sub_results, opt_results, comlqg_results, comlqg_5_results)
+    plot_comparison_result(lqg_results, sub_results, opt_results, comlqg_results)
     

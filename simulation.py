@@ -92,7 +92,7 @@ class MASsimulation:
    
                 
     def run_com_sim(self,num_time_steps):
-        delta = np.sort(np.linalg.eigvals(self.L))[-1] + 20.1        
+        delta = np.sort(np.linalg.eigvals(self.L))[-1] + 0.01       
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.N) as executor:
             for time_step in range(num_time_steps):
@@ -222,8 +222,8 @@ if __name__ == "__main__":
     #                        [0,0,0,0]])
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
-    args['sim_n_step'] = 200
-    args['gain_file_name'] = 'comlqg5_0'
+    args['sim_n_step'] = 300
+    args['gain_file_name'] = 'comlqg15_0'
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
