@@ -197,7 +197,7 @@ class MASsimulation:
    
 if __name__ == "__main__":
     args = {}
-    args['Ts'] = 0.1
+    args['Ts'] = 0.025
     N_agent = 5
     args['N'] = N_agent
     args['w_std'] = 1.0 # w std for each agent 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
     args['sim_n_step'] = 300
-    args['gain_file_name'] = 'comlqg15_0'
+    args['gain_file_name'] = 'sub32'
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
