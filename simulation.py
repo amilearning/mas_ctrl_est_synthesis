@@ -200,15 +200,15 @@ class MASsimulation:
 if __name__ == "__main__":
     args = {}
     args['Ts'] = 0.1
-    N_agent = 5
+    N_agent = 15
     args['N'] = N_agent
     args['w_std'] = 0.1 # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
     # args['v_std'][0] = 1.0
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-    args['c'] = get_chain_adj_mtx(N_agent) 
-    # args['c'] = get_circular_adj_mtx(N_agent) 
-    args['gamma'] = 1
+    # args['c'] = get_chain_adj_mtx(N_agent) 
+    args['c'] = get_circular_adj_mtx(N_agent) 
+    args['gamma'] = 15
     # args['c'] = np.array([[1,1,0,0,0],
     #                       [1,1,1,0,0],
     #                       [0,1,1,1,0],
@@ -224,14 +224,14 @@ if __name__ == "__main__":
     #                        [0,0,0,0]])
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
-    args['sim_n_step'] = 200
-    args['gain_file_name'] = '22'
+    args['sim_n_step'] = 100
+    args['gain_file_name'] = '2222'
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
     # CtrlEstFeedback = 2
     # COMLQG = 3
-    args['ctrl_type'] = CtrlTypes.CtrlEstFeedback
+    args['ctrl_type'] = CtrlTypes.COMLQG
 
     obj = MASsimulation(args)
     obj.eval.eval_init()
