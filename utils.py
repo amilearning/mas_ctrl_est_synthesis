@@ -86,6 +86,76 @@ def block_diagonal_matrix(matrix_list):
 
     return block_diag_matrix
 
+def plot_interaction_weight(F, cmap='viridis'):
+  
+    import matplotlib.ticker as ticker  # Import the ticker module
+
+    from matplotlib.colors import LinearSegmentedColormap
+
+    # colors = [(0, 0, 0.5), (0.5, 0.5, 1), (1, 1, 1), (1, 1, 0), (1, 0, 0)]  # Replace with your desired colors
+    colors = [(68/255, 1/255, 84/255),
+            (59/255, 82/255, 139/255),  # RGB for #3b528b             
+            (33/255, 145/255, 140/255),  # RGB for #21918c     
+             (94/255, 201/255, 98/255),  # RGB for #5ec962 
+            (250/255, 250/255, 250/255),  # RGB for #5ec962 
+            (253/255, 231/255, 37/255)
+            ] 
+
+    n_bins = 256  # Number of bins for the color map
+    cmap_name = "custom_cmap"
+    custom_cmap = LinearSegmentedColormap.from_list(cmap_name, colors, N=n_bins)
+
+    num_rows, num_cols = F.shape
+    # Create the plot with the image
+    fig, ax = plt.subplots()
+    im = ax.imshow(F, cmap=custom_cmap, vmin=-1.5, vmax=0.5)
+    cbar = plt.colorbar(im, shrink=0.75, aspect=20, pad=0.02)
+
+    # Set the font size for color bar tick labels
+    cbar.ax.tick_params(labelsize=12)  # Adjust the fontsize as needed
+
+    n_agent = int(F.shape[0] / 2)
+    agent_range = np.arange(1, n_agent + 1, 1)
+    col_axis_label = np.kron(agent_range, np.ones(int(F.shape[1] / n_agent)))
+    row_axis_label = np.kron(agent_range, np.ones(int(F.shape[0] / n_agent)))
+
+    # Move the tick positions by half an index
+    col_ticks = np.arange(len(col_axis_label)) - 0.5
+    row_ticks = np.arange(len(row_axis_label)) - 0.5
+
+    # Format the tick labels with "agent"
+    col_tick_labels = [f"#{int(label)} agent" for label in col_axis_label]
+    row_tick_labels = [f"#{int(label)} agent" for label in row_axis_label]
+
+    # Create custom tick positions and labels for rows (every multiple of 2)
+    row_tick_positions = np.arange(0, num_rows, 2) + 0.5
+    row_tick_labels = [f"#{int(label)} agent" for label in row_axis_label[::2]]
+
+    # Create custom tick positions and labels for columns (every multiple of 4)
+    col_tick_positions = np.arange(0, num_cols, 4) + 1.5
+    col_tick_labels = [f"#{int(label)} agent" for label in col_axis_label[::4]]
+
+    ax.set_xticks(col_tick_positions)
+    ax.set_xticklabels(col_tick_labels, fontsize=12)  # Adjust the fontsize as needed
+    ax.set_yticks(row_tick_positions)
+    ax.set_yticklabels(row_tick_labels, fontsize=12)  # Adjust the fontsize as needed
+
+    # Draw a black vertical line for every even-numbered row shifted by half an index
+    for row in range(1, num_rows, 2):
+        ax.axhline(y=row - 1.5, color='black', linewidth=1)
+
+    # Draw a black horizontal line for multiples of 4 in every column shifted by half an index
+    for col in range(0, num_cols, 4):
+        ax.axvline(x=col - 0.5, color='black', linewidth=1)
+
+    # Add LaTeX-formatted text below the x-axis label
+    ax.text(0.5, -0.08, r'$F$', fontsize=16, ha='center', va='center', transform=ax.transAxes)
+    # ax.grid(True, linestyle='--', linewidth=0.5, color='gray')
+    plt.show()
+
+
+
+
 def display_array_in_window(data, cmap='viridis'):
     """
     Display a NumPy array in a separate window using Matplotlib.
@@ -121,7 +191,8 @@ def plot_x_y(traj_list):
     ax2.set_ylabel('Y')
     for traj in traj_list:
         x = traj[:, 0]
-        y = traj[:, 2]
+        
+        y = traj[:, int((traj.shape[1]+1)/2)]
         time_steps = np.arange(len(traj))  # Assuming time steps are sequential integers            
         # ax1.plot(time_steps, x, label='Agent Trajectory', linewidth=1)
         # ax2.plot(time_steps, y, label='Agent Trajectory', linewidth=1)
@@ -270,13 +341,26 @@ def get_formation_offset_vector(N,n,dist = 4.0):
     for i in range(N):
         for j in range(N):
             xref_tmp[i, j, :] = rel_pos[i, :] - rel_pos[j, :]
-            xref[j * n:j * n + n, i] = [xref_tmp[i, j, 0], 0, xref_tmp[i, j, 1], 0]
+            if n == 4:
+                xref[j * n:j * n + n, i] = [xref_tmp[i, j, 0], 0, xref_tmp[i, j, 1],0]
+            elif n==2:
+                xref[j * n:j * n + n, i] = [xref_tmp[i, j, 0],  xref_tmp[i, j, 1]]
+            else:
+                assert 1==2
+            
+            # xref[j * n:j * n + n, i] = [xref_tmp[i, j, 0],  xref_tmp[i, j, 1]]
 
     xref = -1 * xref
 
     # Create offset matrix
     for id in range(N):
-        offset_mtx[id * n:id * n + n, 0] = [rel_pos[id, 0], 0, rel_pos[id, 1], 0]
+        if n == 4:
+            offset_mtx[id * n:id * n + n, 0] = [rel_pos[id, 0], 0, rel_pos[id, 1], 0]
+        elif n==2:
+             offset_mtx[id * n:id * n + n, 0] = [rel_pos[id, 0], rel_pos[id, 1]]
+        else:
+            assert 1==2
+
 
     return offset_mtx
 

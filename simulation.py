@@ -98,6 +98,7 @@ class MASsimulation:
             for time_step in range(num_time_steps):
                 ## set measurements 
                 self.get_states()
+               
                 self.get_inputs()
             
                 stage_cost = self.compute_cost(self.X, self.U)                
@@ -165,6 +166,7 @@ class MASsimulation:
         
     def get_states(self):
         gt_state_vector = []
+        
         for i in range(self.N):
             gt_state = self.agents[i].get_x()
             gt_state_vector.append(gt_state)
@@ -183,7 +185,7 @@ class MASsimulation:
             gain = self.synthesis.lqr_gain
     
 
-        tmp_state = np.random.randn(4,1)*1e-3
+        tmp_state = np.random.randn(self.n,1)*1e-3 
         for i in range(self.N):
             self.agents[i].set_x(tmp_state)
             self.agents[i].set_gain(gain)
@@ -197,15 +199,15 @@ class MASsimulation:
    
 if __name__ == "__main__":
     args = {}
-    args['Ts'] = 0.025
+    args['Ts'] = 0.1
     N_agent = 5
     args['N'] = N_agent
-    args['w_std'] = 1.0 # w std for each agent 
-    args['v_std'] = np.ones([N_agent,1])*1.0 # v std for each agent.     
+    args['w_std'] = 0.1 # w std for each agent 
+    args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
     # args['v_std'][0] = 1.0
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
-    # args['c'] = get_chain_adj_mtx(N_agent) 
-    args['c'] = get_circular_adj_mtx(N_agent) 
+    args['c'] = get_chain_adj_mtx(N_agent) 
+    # args['c'] = get_circular_adj_mtx(N_agent) 
     args['gamma'] = 1
     # args['c'] = np.array([[1,1,0,0,0],
     #                       [1,1,1,0,0],
@@ -222,14 +224,14 @@ if __name__ == "__main__":
     #                        [0,0,0,0]])
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
-    args['sim_n_step'] = 300
-    args['gain_file_name'] = 'sub32'
+    args['sim_n_step'] = 200
+    args['gain_file_name'] = '22'
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
     # CtrlEstFeedback = 2
     # COMLQG = 3
-    args['ctrl_type'] = CtrlTypes.COMLQG
+    args['ctrl_type'] = CtrlTypes.CtrlEstFeedback
 
     obj = MASsimulation(args)
     obj.eval.eval_init()

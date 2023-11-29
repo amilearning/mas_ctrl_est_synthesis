@@ -12,18 +12,32 @@ class Agent:
         self.n = args['n'] ## state dim         
         self.N = args['N']
         self.p = args['p'] ## input dim
-        self.A = np.array([
-            [1, self.Ts, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, self.Ts],
-            [0, 0, 0, 1]
-        ])
-        self.B = np.array([
-            [self.Ts**2 / 2, 0],
-            [self.Ts, 0],
-            [0, self.Ts**2 / 2],
-            [0, self.Ts]
-        ])
+        if self.n == 2:
+            self.A = np.array([
+                [1, 0],
+                [0, 1]
+            ])
+            self.B = np.array([
+                [self.Ts, 0],    
+                [0,self.Ts]
+            ])
+        elif self.n ==4 :
+
+            self.A = np.array([
+                [1, self.Ts, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, self.Ts],
+                [0, 0, 0, 1]
+            ])
+            self.B = np.array([
+                [self.Ts**2 / 2, 0],
+                [self.Ts, 0],
+                [0, self.Ts**2 / 2],
+                [0, self.Ts]
+            ])
+        else:
+            assert 1==2
+            
         
         self.x = np.zeros([self.n,1])
         self.xhat = np.zeros([self.n,1])

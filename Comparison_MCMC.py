@@ -96,28 +96,28 @@ if __name__ == "__main__":
     fullyconnected_synthesis_list = []
     partial_synthesis_list = []
 
-    num_simulations = 1000  # Define the number of parallel simulations
+    num_simulations = 100  # Define the number of parallel simulations
     args = {}        
-    args['sim_n_step'] = 500
-    args['n'] = 4
+    args['sim_n_step'] = 300
+    args['n'] = 2
     args['p'] = 2
     args['Ts'] = 0.1   
     args['ctrl_type'] = 0
     args['gamma'] = 1
-    w_std = 1.0     
-    v_std = 1.0   
+    w_std = 0.1     
+    v_std = 0.1   
     
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
 
-    num_agent_list = [5,10,15]
+    num_agent_list = [5]
     for idx, N_agent in enumerate(num_agent_list):
                
         args['N'] = N_agent
         args['w_std'] = w_std  # w std for each agent 
         args['v_std'] = np.ones([N_agent,1])*v_std# v std for each agent.     
         # args['v_std'][0] = args['v_std'][0]*5            
-        # args['c'] = get_chain_adj_mtx(N_agent) 
-        args['c'] = get_circular_adj_mtx(N_agent) 
+        args['c'] = get_chain_adj_mtx(N_agent) 
+        # args['c'] = get_circular_adj_mtx(N_agent) 
         args['L'] = get_laplacian_mtx(args['c']) # Laplacian matrix             
         args['Q'] = np.kron(args['L'], np.eye(args['n'])) # np.eye(N_agent)*N_agent-np.ones([N_agent,N_agent])    
         args['R'] = np.eye(N_agent)
@@ -138,12 +138,12 @@ if __name__ == "__main__":
         comglqg_args = args.copy()
         comglqg_args['gain_file_name'] = 'comlqg' + str(args['N'])
         comglqg_args['ctrl_type'] = CtrlTypes.COMLQG
-        if N_agent == 5:
-            comglqg_args['gamma'] = 1
-        elif N_agent ==10:
-            comglqg_args['gamma'] = 10
-        elif N_agent ==15:
-            comglqg_args['gamma'] = 15
+        # if N_agent == 5:
+        #     comglqg_args['gamma'] = 1
+        # elif N_agent ==10:
+        #     comglqg_args['gamma'] = 10
+        # elif N_agent ==15:
+        comglqg_args['gamma'] = 15
         comglqg_synthesis = ControlEstimationSynthesis(comglqg_args)
 
 
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     # save_data['fullyconnected_synthesis_list'] = fullyconnected_synthesis_list
     
     
-    save_file_name = 'mcmc_experiment_' +str(1) + str('.pkl')
+    save_file_name = 'mcmc_experiment_tmp' +str(1) + str('.pkl')
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(script_dir, 'data')  # Create a 'data' directory in the same folder as your script
     file_path = os.path.join(data_dir, save_file_name)  # Create a 'data' directory in the same folder as your script

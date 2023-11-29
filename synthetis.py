@@ -132,7 +132,7 @@ class ControlEstimationSynthesis:
             print('opt gains found')     
             
             self.save_gains(file_name=file_name_)
-        
+        # plot_interaction_weight(self.lqr_gain)
         if data_load is False:
             print("gains generated")
         
@@ -176,9 +176,9 @@ class ControlEstimationSynthesis:
         
 
         # Write the dictionary to a .mat file
-        mat_file_name = file_name + '.mat'
-        mat_file_path =  os.path.join(data_dir, mat_file_name)
-        savemat(mat_file_path, data)
+        # mat_file_name = file_name + '.mat'
+        # mat_file_path =  os.path.join(data_dir, mat_file_name)
+        # savemat(mat_file_path, data)
 
     def compute_suboptimal_gain(self):                
         ## assume the dynamics are the same for all agents
@@ -187,15 +187,26 @@ class ControlEstimationSynthesis:
         end_eig = Leigs[-1]
         second_eig = Leigs[1]
         c = 2/(second_eig+end_eig)
-        Ac = np.array([[0, 1, 0, 0],
-                    [0, 0, 0, 0],
-                    [0, 0, 0, 1],
-                    [0, 0, 0, 0]])
+        if self.n == 4:
+            Ac = np.array([[0, 1, 0, 0],
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 1],
+                        [0, 0, 0, 0]])
 
-        Bc = np.array([[0, 0],
-                    [1, 0],
-                    [0, 0],
-                    [0, 1]])
+            Bc = np.array([[0, 0],
+                        [1, 0],
+                        [0, 0],
+                        [0, 1]])
+        elif self.n==2:
+
+            Ac = np.array([[0 ,0],
+                [0, 0]])
+
+            Bc = np.array([[1,0],
+                        [0,1]])
+        else:
+            assert 1==2
+            
         Q = np.eye(self.n)
         R = self.R[0:2,0:2]
         epsilon = 0.0001
@@ -205,11 +216,12 @@ class ControlEstimationSynthesis:
         Qbar = end_eig * Q + epsilon*np.eye(Q.shape[0])
         # Rbar = -1 *(c^2 * end_eig**2 - 2*c*end_eig) * R^-1
         Rbar = -1* (c**2 * end_eig**2 - 2* c * end_eig)* np.linalg.inv(R)
+
         P = la.solve_continuous_are(Ac,Bc,Qbar,Rbar)        
         K = -c * np.linalg.inv(R) @  Bc.T @ P
         
         A_tilde_c = Ac + Bc @ K
-        sys = cont2discrete((A_tilde_c, np.zeros([4,1]), [],[]), self.Ts, method='zoh')
+        sys = cont2discrete((A_tilde_c, np.zeros([self.n,1]), [],[]), self.Ts, method='zoh')
         A_tilde_d = sys[0]
         original_sys = cont2discrete((Ac, Bc, [],[]), self.Ts, method='zoh')
         Ad = original_sys[0]
