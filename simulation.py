@@ -1,12 +1,12 @@
 import numpy as np
 import math
-from agent import Agent
-from utils import *
+from mas_ws.agent import Agent
+from mas_ws.utils import *
 import control as ct
-from synthetis import ControlEstimationSynthesis
+from mas_ws.synthetis import ControlEstimationSynthesis
 import threading
 import concurrent.futures
-from eval import MASEval
+from mas_ws.eval import MASEval
 enable_debug_mode = False
 
     

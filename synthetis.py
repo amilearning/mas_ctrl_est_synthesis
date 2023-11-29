@@ -1,7 +1,7 @@
 import numpy as np
 import math
-from agent import Agent
-from utils import *
+from mas_ws.agent import Agent
+from mas_ws.utils import *
 import control as ct
 import os 
 import pickle

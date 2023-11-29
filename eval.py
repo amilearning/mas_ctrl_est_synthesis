@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from utils import *
+from mas_ws.utils import *
 
    
 class MASEval:
