@@ -111,7 +111,8 @@ class ControlEstimationSynthesis:
                 self.opt_stage_cost = self.data['opt_stage_cost']
         else:                       
             self.kalman_gain = np.zeros(1)
-            self.lqr_gain = self.compute_lpr_gain()              
+            self.lqr_gain = self.compute_lpr_gain()     
+            self.kalman_gain = self.compute_dist_kalman()         
             print('lqr solution found')     
             self.sub_gain = self.compute_suboptimal_gain()     
             print('suboptimal solution found')     

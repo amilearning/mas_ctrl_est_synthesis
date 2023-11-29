@@ -126,8 +126,18 @@ class Agent:
         self.u = input
     
     def set_x(self,state):
-        self.x = state
-        
+        self.x = state.copy()
+
+    def compute_input(self):
+        if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback or self.ctrl_type == CtrlTypes.COMLQG:
+            input = np.dot(np.dot(self.Mi,self.F),self.xhat-self.offset).copy()
+        else:
+            input = np.dot(np.dot(self.Mi,self.F),self.z-self.offset)
+        self.u = input.copy()
+       
+    def record_state(self):
+        self.x_mem.append(self.x.copy())
+
     def step(self, u = None):        
         scale = np.diag(np.sqrt(self.w_cov)).reshape(1, self.n)
         # np.random.normal takes std, while w_cov is variance 

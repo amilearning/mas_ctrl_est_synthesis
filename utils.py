@@ -184,12 +184,14 @@ def display_array_in_window(data, cmap='viridis'):
     
     
 def plot_x_y(traj_list):        
-    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+    
+    fig, (ax1) = plt.subplots(1, 1, sharex=True)
     ax1.set_ylabel('X')
     ax1.set_title('Trajectories in X and Y Dimensions')        
-    ax2.set_xlabel('Time Step')
-    ax2.set_ylabel('Y')
+    # ax2.set_xlabel('Time Step')
+    # ax2.set_ylabel('Y')
     for traj in traj_list:
+        traj =traj.squeeze()
         x = traj[:, 0]
         
         y = traj[:, int((traj.shape[1]+1)/2)]
@@ -198,7 +200,7 @@ def plot_x_y(traj_list):
         # ax2.plot(time_steps, y, label='Agent Trajectory', linewidth=1)
         ax1.plot(x, y, label='Agent Trajectory')
     ax1.legend()
-    ax2.legend()
+    # ax2.legend()
     plt.tight_layout()
     plt.show()
 
