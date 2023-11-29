@@ -134,11 +134,11 @@ class Analysis:
 
     
 if __name__ == "__main__":      
-    save_file_name = 'mcmc_experiment_' +str(1) + str('.pkl')
+    save_file_name = 'mcmc_experiment_tmp' +str(2) + str('.pkl')
 
 
     
     analysis_v1 = Analysis(save_file_name)
-    analysis_v1.draw_shaded_stage_cost()
-    # analysis_v1.draw_boxplot()
+    # analysis_v1.draw_shaded_stage_cost()
+    analysis_v1.draw_boxplot()
 
