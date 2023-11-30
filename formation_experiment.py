@@ -182,7 +182,9 @@ class CrazyFormation:
                 thread.join()
 
             ############## Estimation ################################################
-            if self.ctrl_type == CtrlTypes.COMLQG:                
+            if self.ctrl_type == CtrlTypes.COMLQG:    
+                for i in range(self.N):   
+                    self.agents[i].est_step()             
                 roll_xhat = np.vstack([agent.xhat.copy() for agent in self.agents])
                 for i in range(self.gamma):
                     tmp = self.consensus_mtx @ roll_xhat 
