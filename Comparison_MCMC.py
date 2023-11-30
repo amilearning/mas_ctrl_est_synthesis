@@ -94,7 +94,7 @@ if __name__ == "__main__":
     comlqg_results = []
     comlqg_5_results = []
     fullyconnected_synthesis_list = []
-    partial_synthesis_list = []
+    partial_synthesis_list = [] 
 
     num_simulations = 1000  # Define the number of parallel simulations
     args = {}        
