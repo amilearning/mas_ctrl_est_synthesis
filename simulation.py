@@ -40,6 +40,7 @@ class MASsimulation:
         self.agents = self.synthesis.agents
         self.init_MAS()        
         self.X = np.zeros([self.N*self.n,1])
+        self.centralized_xhat = np.zeros([self.N*self.n,1])
         if self.ctrl_type == CtrlTypes.COMLQG:
             self.run_com_sim(sim_step)
         else:
@@ -66,22 +67,34 @@ class MASsimulation:
                 futures = []
                 for agent in self.agents:
                     futures.append(executor.submit(agent.set_measurement(self.X)))                    
-                # Wait for all agent step functions to complete
-                
+                # Wait for all agent step functions to complete                
                 concurrent.futures.wait(futures)
+                
                 if time_step ==0 :
                     for i in range(self.N):
-                        self.agents[i].set_MAS_info(self.synthesis.Atilde,self.synthesis.Btilde, self.synthesis.w_covs, self.synthesis.v_covs)
+                        self.agents[i].set_MAS_info(self.synthesis.Atilde,self.synthesis.Btilde, self.synthesis.w_covs, self.synthesis.v_covs)                        
                         self.agents[i].set_xhat(self.X)
-                        
-                if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
-                    ########### Estimation  ######################                                                  
+                
+                if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+                    ########### Distributed Estimation  ######################                                                  
                     futures = []
                     for agent in self.agents:
                         futures.append(executor.submit(agent.est_step()))                                                    
                     concurrent.futures.wait(futures)                                                
-                    ###########   ######################                                                  
-                
+                    ###########  Distributed Estimation END ######################          
+                elif self.ctrl_type == CtrlTypes.LQGFeedback: 
+                    ########### Centralized Estimation  ######################                   
+                    zis = []
+                    for agent in self.agents:
+                        zis.append(agent.get_measurement())
+                    entire_z = np.vstack(zis)                            
+                    residual = (self.synthesis.centralized_kalman@(entire_z - self.synthesis.entireCmtx @ self.centralized_xhat)).copy()
+                    self.centralized_xhat = self.centralized_xhat + residual
+                    for agent in self.agents:
+                        agent.set_xhat(self.centralized_xhat.copy())
+                        agent.xhat_mem.append(self.centralized_xhat.copy())     
+                    ########### Centralized Estimation END ######################                   
+
                 ########### Dynamics prpogate ###########                                          
                 futures = []
                 for agent in self.agents:
@@ -179,8 +192,10 @@ class MASsimulation:
             gain = self.synthesis.lqr_gain
         elif self.ctrl_type == CtrlTypes.SubOutpFeedback:
             gain = self.synthesis.sub_gain
-        elif self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
+        elif self.ctrl_type == CtrlTypes.CtrlEstFeedback:
             gain = self.synthesis.opt_gain
+        elif self.ctrl_type == CtrlTypes.LQGFeedback:
+            gain = self.synthesis.lqr_gain            
         elif self.ctrl_type == CtrlTypes.COMLQG:
             gain = self.synthesis.lqr_gain
     
@@ -189,8 +204,10 @@ class MASsimulation:
         for i in range(self.N):
             self.agents[i].set_x(tmp_state)
             self.agents[i].set_gain(gain)
-            if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
+            if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
                 self.agents[i].set_est_gain(self.synthesis.est_gains[i])
+            elif  self.ctrl_type == CtrlTypes.LQGFeedback:
+                self.agents[i].set_est_gain(self.synthesis.centralized_kalman)
             elif self.ctrl_type == CtrlTypes.COMLQG:
                 self.agents[i].set_est_gain(self.synthesis.kalman_gain[i])
             self.agents[i].set_offset(self.offset)
@@ -200,7 +217,7 @@ class MASsimulation:
 if __name__ == "__main__":
     args = {}
     args['Ts'] = 0.1
-    N_agent = 15
+    N_agent = 5
     args['N'] = N_agent
     args['w_std'] = 0.1 # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
@@ -225,13 +242,14 @@ if __name__ == "__main__":
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
     args['sim_n_step'] = 200
-    args['gain_file_name'] = '2'
+    args['gain_file_name'] = '1'
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
     # CtrlEstFeedback = 2
     # COMLQG = 3
-    args['ctrl_type'] = CtrlTypes.COMLQG
+    # LQGFeedback = 4
+    args['ctrl_type'] = CtrlTypes.LQGFeedback
 
     obj = MASsimulation(args)
     obj.eval.eval_init()

@@ -96,7 +96,7 @@ if __name__ == "__main__":
     fullyconnected_synthesis_list = []
     partial_synthesis_list = []
 
-    num_simulations = 2  # Define the number of parallel simulations
+    num_simulations = 100  # Define the number of parallel simulations
     args = {}        
     args['sim_n_step'] = 500
     args['n'] = 4
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
 
-    num_agent_list = [5,10,15]
+    num_agent_list = [5]
     for idx, N_agent in enumerate(num_agent_list):
                
         args['N'] = N_agent
