@@ -64,7 +64,7 @@ class ControlEstimationSynthesis:
             self.v_covs.append(tmp_agent.v_cov)
             self.Hi.append(tmp_agent.Hi)
             
-               
+        self.entireCmtx = np.vstack(self.Hi)
         self.Atilde = block_diagonal_matrix(self.Atilde)        
         self.Btilde = block_diagonal_matrix(self.Btilde)        
         self.Bbar = np.kron(np.ones([1,self.N]),self.Btilde)
@@ -92,32 +92,40 @@ class ControlEstimationSynthesis:
         ############### hard FAlse
         ############### hard FAlse
 
-        if data_load:
-            loaded_w_cov = self.data['w_covs']
-            loaded_v_cov = self.data['v_covs']
-            adj_ = self.data['adj_matrix']
+       
             # if self.data['args'] == self.args and np.allclose(loaded_v_cov, self.v_covs) and np.allclose(loaded_w_cov, self.w_covs) and np.allclose(adj_, self.adj):                
             #     data_load = True        
             # else:
             #     data_load = False
-            
+        self.lqr_gain  =[]
+        self.est_gains  =[]
+        self.opt_gain  =[]
+        self.sub_gain  =[]
+        self.kalman_gain  =[]
+        self.centralized_kalman  =[]
+        self.opt_stage_cost = []
+
         if data_load:
             self.lqr_gain = self.data['lqr_gain']
             self.est_gains = self.data['est_gains']  
             self.opt_gain = self.data['opt_gain']          
             self.sub_gain = self.data['sub_gain']
             self.kalman_gain = self.data['kalman_gain']
+            self.centralized_kalman = self.data['centralized_kalman']
+
             if 'opt_stage_cost' in self.data:
                 self.opt_stage_cost = self.data['opt_stage_cost']
-        else:                       
-            self.kalman_gain = np.zeros(1)
-            self.lqr_gain = self.compute_lpr_gain()     
-            self.kalman_gain = self.compute_dist_kalman()         
+        else:                                   
+            self.lqr_gain = self.compute_lpr_gain()              
             print('lqr solution found')     
-            self.sub_gain = self.compute_suboptimal_gain()     
-            print('suboptimal solution found')     
-            if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
+            
+            if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
                 self.opt_gain = self.ctrl_est_synthesis(init_gain_guess = self.lqr_gain)
+            elif self.ctrl_type == CtrlTypes.LQGFeedback:
+                self.centralized_kalman = self.compute_centrlized_kalman()
+            elif self.ctrl_type == CtrlTypes.SubOutpFeedback:
+                self.sub_gain = self.compute_suboptimal_gain() 
+                print('suboptimal solution found')         
             elif self.ctrl_type == CtrlTypes.COMLQG:
                 self.update_estimation_gains(self.lqr_gain)
                 self.kalman_gain = self.compute_dist_kalman()
@@ -167,7 +175,8 @@ class ControlEstimationSynthesis:
                 'v_covs': self.v_covs,
                 'adj_matrix' : self.adj,
                 'args':self.args,
-                'opt_stage_cost':self.opt_stage_cost}
+                'opt_stage_cost':self.opt_stage_cost,
+                'centralized_kalman': self.centralized_kalman}
         if file_name is None:
             file_name = 'gains.pkl'
         file_path = os.path.join(data_dir, file_name)
@@ -272,6 +281,15 @@ class ControlEstimationSynthesis:
         
         return updated_F
 
+    def compute_centrlized_kalman(self):
+        v_covs = [self.Hi[i] @ self.v_covs_list[i] @ self.Hi[i].T for i in range(len(self.Hi))]
+        v_covs_diag = block_diagonal_matrix(v_covs)   
+        Bmtx = np.vstack(self.Hi).T
+        # self.centralized_Cmtx = Bmtx.T        
+        P = solve_discrete_are(self.Atilde, Bmtx, self.w_covs, v_covs_diag, e=None, s=None, balanced=True)        
+        centralized_kalman = P @ Bmtx @  np.linalg.inv(Bmtx.T @ P @ Bmtx + v_covs_diag)
+        return centralized_kalman
+    
     def compute_dist_kalman(self):
     #    X =A' XA -A'XB(R+B'XB)^-1 B'XA + Q
     #    P = APA  -APC'(CPC' + R)^-1CPA' + Q

@@ -42,6 +42,7 @@ class CrazyFormation:
         self.agents = self.synthesis.agents
         self.X = np.zeros([self.N*self.n,1])
         self.Xhat = np.zeros([self.N*self.N*self.n,1])
+        self.centralized_xhat = np.zeros([self.N*self.n,1])
         self.stage_costs = []
         
  
@@ -128,6 +129,8 @@ class CrazyFormation:
             self.agents[i].set_MAS_info(self.synthesis.Atilde,self.synthesis.Btilde, self.synthesis.w_covs, self.synthesis.v_covs)
             self.agents[i].set_xhat(self.X)
         
+        self.centralized_xhat = self.X
+        
        
 
     def get_states(self):
@@ -152,10 +155,6 @@ class CrazyFormation:
     def agent_process(self,agent):
         agent.record_state()
         agent.set_measurement(self.X)
-        agent.est_step()
-        
-        
-    
 
     def init_operation(self):
         time_in_sec = 0
@@ -165,8 +164,6 @@ class CrazyFormation:
         while time_in_sec < self.mission_duration:
             loop_count +=1
             loop_init_time = time.time()
-
-            
            
             self.get_states()
             self.get_inputs()            
@@ -180,6 +177,7 @@ class CrazyFormation:
             for thread in threads:
                 thread.join()
 
+            ############## Estimation ################################################
             if self.ctrl_type == CtrlTypes.COMLQG:                
                 roll_xhat = np.vstack([agent.xhat.copy() for agent in self.agents])
                 for i in range(self.gamma):
@@ -189,15 +187,32 @@ class CrazyFormation:
                     consensus_est = roll_xhat[i*self.N*self.n:(i+1)*self.N*self.n]
                     self.agents[i].set_xhat(consensus_est.copy())
             
+            elif self.ctrl_type == CtrlTypes.LQGFeedback:
+                zis = []
+                for agent in self.agents:
+                    zis.append(agent.get_measurement())
+                entire_z = np.vstack(zis)                            
+                residual = (self.synthesis.centralized_kalman@(entire_z - self.synthesis.entireCmtx @ self.centralized_xhat)).copy()
+                self.centralized_xhat = self.centralized_xhat + residual
+                for agent in self.agents:
+                    agent.set_xhat(self.centralized_xhat.copy())
+                    agent.xhat_mem.append(self.centralized_xhat.copy())   
+
+            elif self.ctrl_type == CtrlTypes.CtrlEstFeedback:
+                for i in range(self.N):   
+                    self.agents[i].est_step()                             
+            ############## Estimation END ################################################
+
+
             for i in range(self.N):
                 self.agents[i].compute_input()
                 action_tmp = self.agents[i].get_input()        
-                # self.cfs[i].cmdVelocityWorld(np.append(action_tmp,np.array([0])), yawRate=0)
+                self.cfs[i].cmdVelocityWorld(np.append(action_tmp,np.array([0])), yawRate=0)
                 ################################### TMP for Zaxi control ###########################
-                tmp_pose = self.cfs[i].position()
-                z = tmp_pose[-1]
-                error = -1*0.35*(z-self.height)
-                self.cfs[i].cmdVelocityWorld(np.append(action_tmp,np.array([error])), yawRate=0)
+                # tmp_pose = self.cfs[i].position()
+                # z = tmp_pose[-1]
+                # error = -1*0.35*(z-self.height)
+                # self.cfs[i].cmdVelocityWorld(np.append(action_tmp,np.array([0])), yawRate=0)
                 ################################### TMP for Zaxi control ###########################
 
                 

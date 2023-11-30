@@ -40,6 +40,7 @@ class MASsimulation:
         self.agents = self.synthesis.agents
         self.init_MAS()        
         self.X = np.zeros([self.N*self.n,1])
+        self.centralized_xhat = np.zeros([self.N*self.n,1])
         if self.ctrl_type == CtrlTypes.COMLQG:
             self.run_com_sim(sim_step)
         else:

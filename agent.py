@@ -116,6 +116,9 @@ class Agent:
         noise = np.random.normal(loc=0, scale=noise_scale)
         self.z = x_all+noise
         
+    def get_measurement(self):
+        return (self.Hi @ self.z).copy()
+
     def get_x(self):
         return self.x.copy()
         
