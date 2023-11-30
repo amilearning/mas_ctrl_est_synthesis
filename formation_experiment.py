@@ -105,8 +105,10 @@ class CrazyFormation:
             gain = self.synthesis.lqr_gain
         elif self.ctrl_type == CtrlTypes.SubOutpFeedback:
             gain = self.synthesis.sub_gain
-        elif self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
+        elif self.ctrl_type == CtrlTypes.CtrlEstFeedback:
             gain = self.synthesis.opt_gain
+        elif self.ctrl_type == CtrlTypes.LQGFeedback:
+            gain = self.synthesis.lqr_gain
         elif self.ctrl_type == CtrlTypes.COMLQG:
             gain = self.synthesis.lqr_gain
         
@@ -114,8 +116,10 @@ class CrazyFormation:
             init_pose_tmp = self.offset[i*2:(i+1)*2].copy()*2
             self.agents[i].set_x(init_pose_tmp)
             self.agents[i].set_gain(gain)
-            if self.ctrl_type == CtrlTypes.CtrlEstFeedback or self.ctrl_type == CtrlTypes.LQGFeedback:
+            if self.ctrl_type == CtrlTypes.CtrlEstFeedback:
                 self.agents[i].set_est_gain(self.synthesis.est_gains[i])
+            elif self.ctrl_type == CtrlTypes.LQGFeedback:
+                self.agents[i].set_est_gain(self.synthesis.centralized_kalman)
             elif self.ctrl_type == CtrlTypes.COMLQG:
                 self.agents[i].set_est_gain(self.synthesis.kalman_gain[i])
             self.agents[i].set_offset(self.offset)
