@@ -115,15 +115,10 @@ class Agent:
         # random normal takes std as scale, but v_cov is in variance
         noise = np.random.normal(loc=0, scale=noise_scale)
         self.z = x_all+noise
-<<<<<<< HEAD
-    def get_measurement(self):
-        return (self.Hi @ self.z).copy()
-=======
     
     def get_measurement(self):
         return (self.Hi @ self.z).copy()
 
->>>>>>> b68887d2504c2304def6f8bd2d4da7f4a83be4e7
     def get_x(self):
         return self.x.copy()
         
