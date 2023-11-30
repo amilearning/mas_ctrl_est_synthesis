@@ -1,8 +1,11 @@
 import numpy as np
 import math
 from mas_ws.utils import *
+from datetime import datetime
 
-   
+import os
+import pickle
+
 class MASEval:
     # Constructor method (optional)
     def __init__(self, args):
@@ -13,13 +16,57 @@ class MASEval:
         self.trajs = []
         self.est_trajs = []
         self.xhats = []
+        current_time = datetime.now().strftime("%m-%d_%H-%M-%S")                                
+        if self.args['is_sim']:
+            self.save_file_name = 'sim'+ self.args['gain_file_name'] +'_test#' +str(self.args['test_number']) + '_' + str(current_time)
+        else:
+            self.save_file_name = self.args['gain_file_name'] +'_test#' +str(self.args['test_number']) + '_' + str(current_time)
+    
+    
+    
+    
+    def save_data(self):
+        
+        data = {
+                'stage_cost': self.stage_costs,
+                'trajs': self.trajs,
+                'xhat': self.xhats,
+                'est_trajs': self.est_trajs,
+                'args': self.args
+                }
+
+        data_file_name = self.save_file_name + str('.pkl')
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(script_dir, 'data')  # Create a 'data' directory in the same folder as your script
+        file_path = os.path.join(data_dir, data_file_name)  # Create a 'data' directory in the same folder as your script
+        if os.path.exists(file_path):
+            file_path = file_path.split('.pkl')[0]+'_copy.pkl'
+        with open(file_path, 'wb') as file:
+            pickle.dump(data,file)
+
+            
+
     def add_stage_cost(self,cost):
         self.stage_costs.append(cost.copy())
         
+
     def eval_init(self):
+        self.save_data()
         plot_x_y(self.trajs)
+        fig_file_name = self.save_file_name + 'xyplot' +str('.png')
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(script_dir, 'figure')  # Create a 'data' directory in the same folder as your script
+        file_path = os.path.join(data_dir, fig_file_name)  # Create a 'data' directory in the same folder as your script
+        plt.savefig(file_path)
+        plt.show()
         # self.get_error_plot()
         plot_stage_cost(self.stage_costs)
+        fig_file_name = self.save_file_name + 'stage_cost' +str('.png')
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(script_dir, 'figure')  # Create a 'data' directory in the same folder as your script
+        file_path = os.path.join(data_dir, fig_file_name)  # Create a 'data' directory in the same folder as your script
+        plt.savefig(file_path)       
+        plt.show()
         
     def get_results(self):
         results = {}
@@ -27,6 +74,7 @@ class MASEval:
         results['trajs'] = self.trajs
         results['xhats'] = self.xhats
         results['est_trajs'] = self.est_trajs
+        results['args'] = self.args
         return results
     
     def list_to_np(self):

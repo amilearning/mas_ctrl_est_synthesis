@@ -4,7 +4,6 @@ import seaborn as sns
 import pandas as pd
 import pickle   
 import matplotlib.pyplot as plt
-
     
 class Analysis:
     # Constructor method (optional)
@@ -19,11 +18,13 @@ class Analysis:
             with open(file_path, 'rb') as file:
                 self.data = pickle.load(file)
                 self.args = self.data['args']
-                self.num_agent_list = self.data['num_agent_list'] 
-                self.lqg_results = self.data['lqg_results']  
-                self.opt_results = self.data['opt_results']  
-                self.sub_results = self.data['sub_results']  
-                self.comlqg_results = self.data['comlqg_results'] 
+                
+                print(self.args)
+                # self.num_agent_list = self.data['num_agent_list'] 
+                # self.lqg_results = self.data['lqg_results']  
+                # self.opt_results = self.data['opt_results']  
+                # self.sub_results = self.data['sub_results']  
+                # self.comlqg_results = self.data['comlqg_results'] 
                 
        
     
@@ -133,12 +134,13 @@ class Analysis:
 
 
     
-if __name__ == "__main__":      
-    save_file_name = 'mcmc_experiment_' +str(1) + str('.pkl')
+# if __name__ == "__main__":      
+#     # save_file_name = 'mcmc_experiment_' +str(1) + str('.pkl')
+#     save_file_name = 'simLQGFeedback_20_test#1_11-30_13-52-19.pkl'
 
 
     
-    analysis_v1 = Analysis(save_file_name)
-    analysis_v1.draw_shaded_stage_cost()
+#     analysis_v1 = Analysis(save_file_name)
+#     analysis_v1.draw_shaded_stage_cost()
     # analysis_v1.draw_boxplot()
 

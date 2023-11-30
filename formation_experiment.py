@@ -8,6 +8,8 @@ import time
 class CrazyFormation:
     def __init__(self,swarm,args):
         self.swarm = swarm
+        args['is_sim'] = swarm.args.sim
+        
         self.timeHelper = swarm.timeHelper
         self.cfs = swarm.allcfs.crazyflies
         args['gain_file_name'] = str(args['ctrl_type']).split('.')[-1]+'_'+str(args['Hz'])
@@ -23,7 +25,7 @@ class CrazyFormation:
         self.p = args['p']
         self.Q = args['Q']
         self.R = args['R']    
-
+        self.distance = 0.5
           
         self.ctrl_type = args['ctrl_type']
         self.gamma = args['gamma']
@@ -34,7 +36,7 @@ class CrazyFormation:
         self.height = args['height']
 
 
-        self.offset = get_formation_offset_vector(self.N, self.n, dist = 0.5)
+        self.offset = get_formation_offset_vector(self.N, self.n, dist = self.distance)
         self.synthesis = ControlEstimationSynthesis(args)        
         self.eval = MASEval(args)
         self.agents = self.synthesis.agents
@@ -54,6 +56,7 @@ class CrazyFormation:
         self.eval_ready() 
         self.eval.eval_init()
     
+
 
     def eval_ready(self):
         trajs = []
@@ -157,8 +160,13 @@ class CrazyFormation:
     def init_operation(self):
         time_in_sec = 0
         self.init_time =  self.timeHelper.time()
+        loop_count = 0
+
         while time_in_sec < self.mission_duration:
+            loop_count +=1
             loop_init_time = time.time()
+
+            
            
             self.get_states()
             self.get_inputs()            
@@ -183,8 +191,16 @@ class CrazyFormation:
             
             for i in range(self.N):
                 self.agents[i].compute_input()
-                action_tmp = self.agents[i].get_input()                
-                self.cfs[i].cmdVelocityWorld(np.append(action_tmp,np.array([0])), yawRate=0)
+                action_tmp = self.agents[i].get_input()        
+                # self.cfs[i].cmdVelocityWorld(np.append(action_tmp,np.array([0])), yawRate=0)
+                ################################### TMP for Zaxi control ###########################
+                tmp_pose = self.cfs[i].position()
+                z = tmp_pose[-1]
+                error = -1*0.35*(z-self.height)
+                self.cfs[i].cmdVelocityWorld(np.append(action_tmp,np.array([error])), yawRate=0)
+                ################################### TMP for Zaxi control ###########################
+
+                
 
 
             time_in_sec = self.timeHelper.time() - self.init_time

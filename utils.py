@@ -202,7 +202,10 @@ def plot_x_y(traj_list):
     ax1.legend()
     # ax2.legend()
     plt.tight_layout()
-    plt.show()
+
+    
+
+    # plt.show()
 
 def plot_3dtraj(traj_list):
     fig = plt.figure()
@@ -269,7 +272,7 @@ def plot_stage_cost(stage_costs):
     plt.title('Stage Costs Over Time')
     plt.legend()
     plt.grid(True)
-    plt.show()
+    # plt.show()
     
     
 def plot_mas_traj(trajs):
