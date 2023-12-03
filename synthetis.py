@@ -141,7 +141,7 @@ class ControlEstimationSynthesis:
             print('opt gains found')     
             
             self.save_gains(file_name=file_name_)
-        # plot_interaction_weight(self.lqr_gain)
+        plot_interaction_weight(self.opt_gain)
         if data_load is False:
             print("gains generated")
         

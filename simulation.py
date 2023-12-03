@@ -221,7 +221,7 @@ if __name__ == "__main__":
     args['N'] = N_agent
     args['w_std'] = 0.1 # w std for each agent 
     args['v_std'] = np.ones([N_agent,1])*0.1 # v std for each agent.     
-    # args['v_std'][0] = 1.0
+    args['v_std'][0] = 1.0
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
     # args['c'] = get_chain_adj_mtx(N_agent) 
     args['c'] = get_circular_adj_mtx(N_agent) 
@@ -242,14 +242,14 @@ if __name__ == "__main__":
     # args['Q'] = args['L']
     args['R'] = np.eye(N_agent)
     args['sim_n_step'] = 200
-    args['gain_file_name'] = '1'
+    args['gain_file_name'] = 'gain_uneven'
 
     # LQROutputFeedback = 0
     # SubOutpFeedback = 1 
     # CtrlEstFeedback = 2
     # COMLQG = 3
     # LQGFeedback = 4
-    args['ctrl_type'] = CtrlTypes.LQGFeedback
+    args['ctrl_type'] = CtrlTypes.CtrlEstFeedback
 
     obj = MASsimulation(args)
     obj.eval.eval_init()

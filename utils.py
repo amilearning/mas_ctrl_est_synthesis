@@ -100,7 +100,7 @@ def plot_interaction_weight(F, cmap='viridis'):
             (250/255, 250/255, 250/255),  # RGB for #5ec962 
             (253/255, 231/255, 37/255)
             ] 
-
+    font_size = 32
     n_bins = 256  # Number of bins for the color map
     cmap_name = "custom_cmap"
     custom_cmap = LinearSegmentedColormap.from_list(cmap_name, colors, N=n_bins)
@@ -109,10 +109,10 @@ def plot_interaction_weight(F, cmap='viridis'):
     # Create the plot with the image
     fig, ax = plt.subplots()
     im = ax.imshow(F, cmap=custom_cmap, vmin=-1.5, vmax=0.5)
-    cbar = plt.colorbar(im, shrink=0.75, aspect=20, pad=0.02)
+    cbar = plt.colorbar(im, shrink=0.7, aspect=20, pad=0.02)
 
     # Set the font size for color bar tick labels
-    cbar.ax.tick_params(labelsize=12)  # Adjust the fontsize as needed
+    cbar.ax.tick_params(labelsize=font_size)  # Adjust the fontsize as needed
 
     n_agent = int(F.shape[0] / 2)
     agent_range = np.arange(1, n_agent + 1, 1)
@@ -136,9 +136,9 @@ def plot_interaction_weight(F, cmap='viridis'):
     col_tick_labels = [f"#{int(label)} agent" for label in col_axis_label[::4]]
 
     ax.set_xticks(col_tick_positions)
-    ax.set_xticklabels(col_tick_labels, fontsize=12)  # Adjust the fontsize as needed
+    ax.set_xticklabels(col_tick_labels, fontsize=font_size)  # Adjust the fontsize as needed
     ax.set_yticks(row_tick_positions)
-    ax.set_yticklabels(row_tick_labels, fontsize=12)  # Adjust the fontsize as needed
+    ax.set_yticklabels(row_tick_labels, fontsize=font_size)  # Adjust the fontsize as needed
 
     # Draw a black vertical line for every even-numbered row shifted by half an index
     for row in range(1, num_rows, 2):
@@ -149,7 +149,7 @@ def plot_interaction_weight(F, cmap='viridis'):
         ax.axvline(x=col - 0.5, color='black', linewidth=1)
 
     # Add LaTeX-formatted text below the x-axis label
-    ax.text(0.5, -0.08, r'$F$', fontsize=16, ha='center', va='center', transform=ax.transAxes)
+    ax.text(0.5, -0.08, r'$F$', fontsize=font_size*1.5, ha='center', va='center', transform=ax.transAxes)
     # ax.grid(True, linestyle='--', linewidth=0.5, color='gray')
     plt.show()
 
