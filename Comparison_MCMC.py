@@ -96,7 +96,7 @@ if __name__ == "__main__":
     fullyconnected_synthesis_list = []
     partial_synthesis_list = [] 
 
-    num_simulations = 100  # Define the number of parallel simulations
+    num_simulations = 1000  # Define the number of parallel simulations
     args = {}        
     args['sim_n_step'] = 500
     args['n'] = 4
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     
     # args['c'] = np.ones([N_agent,N_agent]) # adjencency matrix 
 
-    num_agent_list = [5]
+    num_agent_list = [5,10,15]
     for idx, N_agent in enumerate(num_agent_list):
                
         args['N'] = N_agent
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     # save_data['fullyconnected_synthesis_list'] = fullyconnected_synthesis_list
     
     
-    save_file_name = 'mcmc_experiment_tmp' +str(2) + str('.pkl')
+    save_file_name = 'mcmc_experiment' +str(0) + str('.pkl')
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(script_dir, 'data')  # Create a 'data' directory in the same folder as your script
     file_path = os.path.join(data_dir, save_file_name)  # Create a 'data' directory in the same folder as your script

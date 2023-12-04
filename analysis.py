@@ -134,7 +134,7 @@ class Analysis:
 
     
 if __name__ == "__main__":      
-    save_file_name = 'mcmc_experiment_tmp' +str(2) + str('.pkl')
+    save_file_name = 'mcmc_experiment' +str(0) + str('.pkl')
 
 
     
